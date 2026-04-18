@@ -28,14 +28,18 @@ stage1/
   tv_screener.py             # Builds and executes TradingView screener query
 
 stage2/
-  data_fetcher.py            # yfinance batch OHLC download
+  data_fetcher.py            # yfinance batch OHLC download (daily + weekly)
   saty_ribbon.py             # Saty Pivot Ribbon indicator (pure calculation)
   ttm_squeeze.py             # TTM Squeeze Pro indicator (pure calculation)
+  macd.py                    # MACD indicator (pure calculation)
+  bollinger_bands.py         # Bollinger Bands indicator (pure calculation)
+  saty_phase_oscillator.py   # Saty Phase Oscillator indicator (pure calculation)
 
 scanner/
   evaluator.py               # Evaluates raw indicator output against config subconditions
   expression_parser.py       # Parses +, |, () scan expressions into an AST
   ranker.py                  # Scores and sorts results
+  tag_query.py               # Tag-based subcondition browser (--list, --tree)
 
 models/
   results.py                 # Dataclasses for raw output and screener results
@@ -55,13 +59,20 @@ output/
 
 ## Indicators
 
-Two indicators are pre-loaded:
+Five indicators are pre-loaded:
 
 **Saty Pivot Ribbon** — an EMA ribbon system for trend direction and pullback detection.  
 Credit: [Saty Mahajan (@satymahajan)](https://www.tradingview.com/u/satymahajan/) on TradingView.
 
 **TTM Squeeze Pro** — a volatility compression and momentum indicator based on Bollinger Bands and Keltner Channels.  
 Credit: [Beardy_Fred (@Beardy_Fred)](https://www.tradingview.com/u/Beardy_Fred/) on TradingView.
+
+**MACD** — Moving Average Convergence Divergence with histogram, crossovers, divergence detection, and zero-line analysis.
+
+**Bollinger Bands** — price envelope with bandwidth percentile, squeeze detection, band walk, and breakout signals.
+
+**Saty Phase Oscillator** — a normalized oscillator using EMA/ATR to measure price phase across Fibonacci zones, with divergence and compression tracking.  
+Credit: [Saty Mahajan (@satymahajan)](https://www.tradingview.com/u/satymahajan/) on TradingView.
 
 ---
 
@@ -117,6 +128,31 @@ python main.py --scan bullish_pullback --limit 20
 python main.py --scan bullish_pullback --output output/results.xlsx
 python main.py --scan bullish_pullback --min-cap 1000000000
 python main.py --scan bullish_pullback --sectors Technology Healthcare
+```
+
+### Browsing Subconditions
+
+Every subcondition is tagged with a direction (`bullish`, `bearish`, `neutral`) and one or more type tags (`entry`, `trend`, `momentum`, `reversal`, `breakout`, `compression`, `divergence`, `extreme`, `exit`, `continuation`). Use `--tree` and `--list` to explore what's available without reading `config.py` directly.
+
+```bash
+# Print full tag hierarchy (direction -> type -> subcondition)
+python main.py --tree
+
+# List all subconditions (flat, grouped by indicator)
+python main.py --list
+
+# Filter by direction
+python main.py --list bullish
+python main.py --list bearish
+
+# Filter by direction AND type
+python main.py --list bullish.entry
+python main.py --list bearish.reversal
+python main.py --list neutral.compression
+
+# Filter by type only (any direction)
+python main.py --list divergence
+python main.py --list momentum
 ```
 
 ### Expression Syntax
@@ -185,10 +221,35 @@ PRESETS = {
 
 ---
 
+## Subcondition Tags
+
+Each subcondition in `config.py` carries a `tags` list as its first key. The first tag is always the direction; remaining tags describe the signal type:
+
+**Direction tags:** `bullish` | `bearish` | `neutral`
+
+**Type tags:**
+
+| Tag | Meaning |
+|---|---|
+| `trend` | Identifies the prevailing trend direction |
+| `entry` | Entry signal — actionable on the current bar |
+| `momentum` | Momentum-based signal (MACD crossover, oscillator shift) |
+| `reversal` | Potential trend reversal |
+| `breakout` | Volatility expansion out of compression |
+| `compression` | Squeeze or low-volatility consolidation state |
+| `divergence` | Price/indicator divergence |
+| `extreme` | Overbought or oversold condition |
+| `exit` | Exit or take-profit signal |
+| `continuation` | Trend continuation after a pause |
+
+A subcondition can carry multiple type tags (e.g. `[bullish, breakout, entry]`). In `--tree` output, the `+tag` notation shows secondary type memberships.
+
+---
+
 ## Adding a New Indicator
 
 1. Create `stage2/new_indicator.py` — implement `compute(df, params) -> dict`, return raw values only.
-2. Add an entry to `INDICATORS` in `config.py` with `module`, `params`, `output_fields`, and `subconditions`.
+2. Add an entry to `INDICATORS` in `config.py` with `module`, `params`, `output_fields`, and `subconditions`. Include a `tags` list on each subcondition.
 3. Register it in `stage2/__init__.py` under `INDICATOR_MODULES`.
 4. Optionally reference it in `presets.py`.
 
