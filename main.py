@@ -14,7 +14,11 @@ def _load_optional_dotenv():
 
 def parse_args():
     p = argparse.ArgumentParser(description='Stock Screener')
-    p.add_argument('--scan',       required=True, help='Scan expression or preset name')
+    p.add_argument('--scan',       default=None, help='Scan expression or preset name')
+    p.add_argument('--list',       nargs='?',    const='', metavar='QUERY',
+                   help='List subconditions. Optional query: "bullish", "bullish.entry", "entry"')
+    p.add_argument('--tree',       action='store_true',
+                   help='Print full subcondition tag tree')
     p.add_argument('--limit',      type=int,   default=None, help='Max results to display')
     p.add_argument('--output',     default=None, help='Save results to this .xlsx path')
     p.add_argument('--min-cap',    type=float, default=None, dest='min_cap',
@@ -42,6 +46,21 @@ def main():
 
     STAGE1     = cfg_module.STAGE1
     INDICATORS = cfg_module.INDICATORS
+
+    # ── Tag listing (no scan needed) ─────────────────────────────────────
+    if args.tree:
+        from scanner.tag_query import print_tag_tree
+        print_tag_tree(INDICATORS)
+        sys.exit(0)
+
+    if args.list is not None:
+        from scanner.tag_query import list_subconditions
+        list_subconditions(INDICATORS, query=args.list)
+        sys.exit(0)
+
+    if not args.scan:
+        print('Error: --scan is required unless using --list or --tree.')
+        sys.exit(1)
 
     # ── CLI overrides ────────────────────────────────────────────────────
     if args.min_cap is not None:

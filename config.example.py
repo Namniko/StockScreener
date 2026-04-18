@@ -92,6 +92,7 @@ INDICATORS = {
         ],
         'subconditions': {
             'max_bull': {
+                'tags': ['bullish', 'trend'],
                 'ema8_above_ema13':   True,
                 'ema13_above_ema21':  True,
                 'ema21_above_ema48':  True,
@@ -99,17 +100,20 @@ INDICATORS = {
                 'close_above_ema8':   True,
             },
             'strong_bull': {
+                'tags': ['bullish', 'trend'],
                 'ema8_above_ema21':   True,
                 'ema21_above_ema48':  True,
                 'ema48_above_ema200': True,
                 'close_above_ema21':  True,
             },
             'pullback_buy': {
+                'tags': ['bullish', 'entry'],
                 'close_above_ema21':  True,
                 'low_touched_ema21':  True,
                 'ema21_above_ema48':  True,
             },
             'pullback_buy_strong': {
+                'tags': ['bullish', 'entry'],
                 'close_above_ema21':  True,
                 'low_touched_ema21':  True,
                 'ema8_above_ema13':   True,
@@ -118,15 +122,18 @@ INDICATORS = {
                 'ema48_above_ema200': True,
             },
             'pullback_buy_ema8': {
+                'tags': ['bullish', 'entry'],
                 'close_above_ema8':   True,
                 'low_touched_ema8':   True,
                 'ema8_above_ema21':   True,
                 'ema21_above_ema48':  True,
             },
             'bullish_bias': {
+                'tags': ['bullish', 'trend'],
                 'close_above_ema21':  True,
             },
             'max_bear': {
+                'tags': ['bearish', 'trend'],
                 'ema8_above_ema13':   False,
                 'ema13_above_ema21':  False,
                 'ema21_above_ema48':  False,
@@ -134,22 +141,27 @@ INDICATORS = {
                 'close_above_ema8':   False,
             },
             'pullback_short': {
+                'tags': ['bearish', 'entry'],
                 'close_above_ema21':  False,
                 'high_touched_ema21': True,
                 'ema21_above_ema48':  False,
             },
             'bearish_bias': {
+                'tags': ['bearish', 'trend'],
                 'close_above_ema21':  False,
             },
             'vomy_warning': {
+                'tags': ['neutral', 'exit'],
                 'ema8_above_ema13':      True,
                 'ema8_slope_positive':   False,
                 'ema8_ema13_gap_pct':    0.5,
             },
             'golden_cross': {
+                'tags': ['bullish', 'reversal'],
                 'ema21_crossed_above_ema200_recently': True,
             },
             'death_cross': {
+                'tags': ['bearish', 'reversal'],
                 'ema21_crossed_below_ema200_recently': True,
             },
         }
@@ -185,66 +197,79 @@ INDICATORS = {
         ],
         'subconditions': {
             'anticipatory_bull': {
-                'dot_color':           ['Orange', 'Red'],
+                'tags': ['bullish', 'entry', 'compression'],
+                'dot_color':             ['Orange', 'Red'],
                 'compression_bars__gte': 5,
-                'momentum_above_zero': True,
-                'momentum_rising':     True,
+                'momentum_above_zero':   True,
+                'momentum_rising':       True,
             },
             'anticipatory_bull_orange': {
+                'tags': ['bullish', 'entry', 'compression'],
                 'dot_color':           ['Orange'],
                 'momentum_above_zero': True,
                 'momentum_rising':     True,
             },
             'anticipatory_bear': {
-                'dot_color':           ['Orange', 'Red'],
+                'tags': ['bearish', 'entry', 'compression'],
+                'dot_color':             ['Orange', 'Red'],
                 'compression_bars__gte': 5,
-                'momentum_above_zero': False,
-                'momentum_rising':     False,
+                'momentum_above_zero':   False,
+                'momentum_rising':       False,
             },
             'anticipatory_bear_orange': {
+                'tags': ['bearish', 'entry', 'compression'],
                 'dot_color':           ['Orange'],
                 'momentum_above_zero': False,
                 'momentum_rising':     False,
             },
             'confirmed_bull': {
+                'tags': ['bullish', 'entry', 'breakout'],
                 'first_green_dot':     True,
                 'momentum_above_zero': True,
                 'atr_distance__lte':   1.0,
             },
             'confirmed_bear': {
+                'tags': ['bearish', 'entry', 'breakout'],
                 'first_green_dot':     True,
                 'momentum_above_zero': False,
                 'atr_distance__lte':   1.0,
             },
             'late_bull': {
+                'tags': ['bullish', 'breakout'],
                 'first_green_dot':     True,
                 'momentum_above_zero': True,
                 'atr_distance__gt':    1.0,
             },
             'late_bear': {
+                'tags': ['bearish', 'breakout'],
                 'first_green_dot':     True,
                 'momentum_above_zero': False,
                 'atr_distance__gt':    1.0,
             },
             'exit_long': {
+                'tags': ['neutral', 'exit'],
                 'momentum_color':      ['Blue'],
                 'prev_momentum_color': ['Blue'],
             },
             'exit_short': {
+                'tags': ['neutral', 'exit'],
                 'momentum_color':      ['Yellow'],
                 'prev_momentum_color': ['Yellow'],
             },
             'med_bullish': {
-                'dot_color':           ['Orange', 'Red', 'Black'],
+                'tags': ['bullish', 'entry', 'compression'],
+                'dot_color':             ['Orange', 'Red', 'Black'],
                 'compression_bars__gte': 3,
-                'momentum_above_zero': True,
+                'momentum_above_zero':   True,
             },
             'high_compression': {
-                'dot_color':           ['Orange'],
+                'tags': ['neutral', 'compression'],
+                'dot_color':             ['Orange'],
                 'compression_bars__gte': 3,
             },
             'building': {
-                'dot_color':           ['Black', 'Red', 'Orange'],
+                'tags': ['neutral', 'compression'],
+                'dot_color':             ['Black', 'Red', 'Orange'],
                 'compression_bars__gte': 1,
             },
         }
@@ -274,88 +299,112 @@ INDICATORS = {
         ],
         'subconditions': {
             'signal_crossover_bull': {
+                'tags': ['bullish', 'entry', 'momentum'],
                 'macd_crossed_above_signal': True,
             },
             'signal_crossover_bear': {
+                'tags': ['bearish', 'entry', 'momentum'],
                 'macd_crossed_below_signal': True,
             },
             'signal_crossover_bull_above_zero': {
+                'tags': ['bullish', 'entry', 'momentum'],
                 'macd_crossed_above_signal': True,
                 'macd_above_zero':           True,
             },
             'signal_crossover_bear_below_zero': {
+                'tags': ['bearish', 'entry', 'momentum'],
                 'macd_crossed_below_signal': True,
                 'macd_below_zero':           True,
             },
             'zero_cross_bull': {
+                'tags': ['bullish', 'trend', 'momentum'],
                 'macd_crossed_above_zero': True,
             },
             'zero_cross_bear': {
+                'tags': ['bearish', 'trend', 'momentum'],
                 'macd_crossed_below_zero': True,
             },
             'bullish_trend': {
+                'tags': ['bullish', 'trend'],
                 'macd_above_zero':   True,
                 'macd_above_signal': True,
             },
             'bearish_trend': {
+                'tags': ['bearish', 'trend'],
                 'macd_below_zero':   True,
                 'macd_below_signal': True,
             },
             'bullish_bias': {
+                'tags': ['bullish', 'trend'],
                 'macd_above_zero': True,
             },
             'bearish_bias': {
+                'tags': ['bearish', 'trend'],
                 'macd_below_zero': True,
             },
             'histogram_bull_expanding': {
+                'tags': ['bullish', 'momentum'],
                 'histogram_above_zero_rising': True,
             },
             'histogram_bear_expanding': {
+                'tags': ['bearish', 'momentum'],
                 'histogram_below_zero_falling': True,
             },
             'histogram_bull_fading': {
+                'tags': ['neutral', 'exit'],
                 'histogram_above_zero_falling': True,
             },
             'histogram_bear_fading': {
+                'tags': ['neutral', 'exit'],
                 'histogram_below_zero_rising': True,
             },
             'bullish_divergence': {
+                'tags': ['bullish', 'divergence', 'reversal'],
                 'bullish_divergence': True,
             },
             'bearish_divergence': {
+                'tags': ['bearish', 'divergence', 'reversal'],
                 'bearish_divergence': True,
             },
             'bullish_divergence_confirmed': {
+                'tags': ['bullish', 'divergence', 'reversal', 'entry'],
                 'bullish_divergence':        True,
                 'macd_crossed_above_signal': True,
             },
             'bearish_divergence_confirmed': {
+                'tags': ['bearish', 'divergence', 'reversal', 'entry'],
                 'bearish_divergence':        True,
                 'macd_crossed_below_signal': True,
             },
             'stretched_bull': {
+                'tags': ['neutral', 'exit', 'extreme'],
                 'histogram_positive':       True,
                 'macd_signal_gap_pct__gte': 0.5,
             },
             'stretched_bear': {
+                'tags': ['neutral', 'exit', 'extreme'],
                 'histogram_negative':       True,
                 'macd_signal_gap_pct__gte': 0.5,
             },
             'strong_bull': {
+                'tags': ['bullish', 'trend', 'momentum'],
                 'macd_above_zero':             True,
                 'macd_above_signal':           True,
                 'histogram_above_zero_rising': True,
             },
             'strong_bear': {
+                'tags': ['bearish', 'trend', 'momentum'],
                 'macd_below_zero':              True,
                 'macd_below_signal':            True,
                 'histogram_below_zero_falling': True,
             },
             'pullback_buy_setup': {
+                'tags': ['bullish', 'entry'],
                 'macd_above_zero':              True,
                 'histogram_above_zero_falling': True,
             },
             'pullback_short_setup': {
+                'tags': ['bearish', 'entry'],
                 'macd_below_zero':             True,
                 'histogram_below_zero_rising': True,
             },
@@ -391,100 +440,129 @@ INDICATORS = {
         ],
         'subconditions': {
             'squeeze': {
+                'tags': ['neutral', 'compression'],
                 'is_squeeze': True,
             },
             'squeeze_fired': {
+                'tags': ['neutral', 'breakout'],
                 'squeeze_just_fired': True,
             },
             'high_volatility': {
+                'tags': ['neutral', 'breakout'],
                 'bandwidth_percentile__gte': 75,
                 'bandwidth_expanding':       True,
             },
             'volatility_expanding': {
+                'tags': ['neutral', 'breakout'],
                 'bandwidth_expanding': True,
             },
             'volatility_contracting': {
+                'tags': ['neutral', 'compression'],
                 'bandwidth_contracting': True,
             },
             'bullish_trend': {
+                'tags': ['bullish', 'trend'],
                 'close_above_middle': True,
             },
             'bearish_trend': {
+                'tags': ['bearish', 'trend'],
                 'close_below_middle': True,
             },
             'bullish_trend_strong': {
+                'tags': ['bullish', 'trend'],
                 'close_above_middle':  True,
                 'bandwidth_expanding': True,
             },
             'bearish_trend_strong': {
+                'tags': ['bearish', 'trend'],
                 'close_below_middle':  True,
                 'bandwidth_expanding': True,
             },
             'middle_band_cross_bull': {
+                'tags': ['bullish', 'entry', 'momentum'],
                 'crossed_above_middle': True,
             },
             'middle_band_cross_bear': {
+                'tags': ['bearish', 'entry', 'momentum'],
                 'crossed_below_middle': True,
             },
             'near_upper_band': {
+                'tags': ['bearish', 'extreme'],
                 'close_near_upper': True,
             },
             'near_lower_band': {
+                'tags': ['bullish', 'extreme'],
                 'close_near_lower': True,
             },
             'outside_upper_band': {
+                'tags': ['neutral', 'extreme', 'breakout'],
                 'breakout_upper': True,
             },
             'outside_lower_band': {
+                'tags': ['neutral', 'extreme', 'breakout'],
                 'breakout_lower': True,
             },
             'breakout_bull': {
+                'tags': ['bullish', 'breakout', 'entry'],
                 'breakout_upper_new': True,
             },
             'breakout_bear': {
+                'tags': ['bearish', 'breakout', 'entry'],
                 'breakout_lower_new': True,
             },
             'breakout_bull_squeeze': {
+                'tags': ['bullish', 'breakout', 'entry', 'compression'],
                 'breakout_upper_new': True,
                 'squeeze_just_fired': True,
             },
             'breakout_bear_squeeze': {
+                'tags': ['bearish', 'breakout', 'entry', 'compression'],
                 'breakout_lower_new': True,
                 'squeeze_just_fired': True,
             },
             'walking_upper': {
+                'tags': ['bullish', 'trend', 'continuation'],
                 'walking_upper_band': True,
             },
             'walking_lower': {
+                'tags': ['bearish', 'trend', 'continuation'],
                 'walking_lower_band': True,
             },
             'upper_band_rejection': {
+                'tags': ['bearish', 'reversal'],
                 'upper_band_rejection': True,
             },
             'lower_band_rejection': {
+                'tags': ['bullish', 'reversal'],
                 'lower_band_rejection': True,
             },
             'lower_band_rejection_bullish_trend': {
+                'tags': ['bullish', 'reversal', 'entry'],
                 'lower_band_rejection': True,
                 'close_above_middle':   True,
             },
             'upper_band_rejection_bearish_trend': {
+                'tags': ['bearish', 'reversal', 'entry'],
                 'upper_band_rejection': True,
                 'close_below_middle':   True,
             },
             'squeeze_bull_setup': {
+                'tags': ['bullish', 'compression', 'entry'],
                 'is_squeeze':         True,
                 'close_above_middle': True,
             },
             'squeeze_bear_setup': {
+                'tags': ['bearish', 'compression', 'entry'],
                 'is_squeeze':         True,
                 'close_below_middle': True,
             },
             'oversold_reversal': {
+                'tags': ['bullish', 'reversal', 'extreme'],
                 'close_near_lower':      True,
                 'bandwidth_contracting': True,
             },
             'overbought_reversal': {
+                'tags': ['bearish', 'reversal', 'extreme'],
                 'close_near_upper':      True,
                 'bandwidth_contracting': True,
             },
@@ -523,146 +601,188 @@ INDICATORS = {
         ],
         'subconditions': {
             'in_accumulation': {
+                'tags': ['bullish', 'extreme'],
                 'in_accumulation': True,
             },
             'in_extreme_down': {
+                'tags': ['bullish', 'extreme'],
                 'in_extreme_down': True,
             },
             'in_distribution': {
+                'tags': ['bearish', 'extreme'],
                 'in_distribution': True,
             },
             'in_extreme_up': {
+                'tags': ['bearish', 'extreme'],
                 'in_extreme_up': True,
             },
             'bullish_momentum': {
+                'tags': ['bullish', 'momentum'],
                 'in_neutral_up':     True,
                 'oscillator_rising': True,
             },
             'above_zero': {
+                'tags': ['bullish', 'trend'],
                 'above_zero': True,
             },
             'below_zero': {
+                'tags': ['bearish', 'trend'],
                 'below_zero': True,
             },
             'leaving_accumulation': {
+                'tags': ['bullish', 'reversal', 'entry'],
                 'leaving_accumulation': True,
             },
             'leaving_extreme_down': {
+                'tags': ['bullish', 'reversal', 'entry'],
                 'leaving_extreme_down': True,
             },
             'leaving_distribution': {
+                'tags': ['bearish', 'reversal', 'entry'],
                 'leaving_distribution': True,
             },
             'leaving_extreme_up': {
+                'tags': ['bearish', 'reversal', 'entry'],
                 'leaving_extreme_up': True,
             },
             'zero_cross_bull': {
+                'tags': ['bullish', 'momentum', 'entry'],
                 'crossed_above_zero': True,
             },
             'zero_cross_bear': {
+                'tags': ['bearish', 'momentum', 'entry'],
                 'crossed_below_zero': True,
             },
             'entering_bull_zone': {
+                'tags': ['bullish', 'momentum', 'trend'],
                 'crossed_above_neutral_up': True,
             },
             'entering_bear_zone': {
+                'tags': ['bearish', 'momentum', 'trend'],
                 'crossed_below_neutral_down': True,
             },
             'reversion_dot_bull': {
+                'tags': ['bullish', 'reversal'],
                 'reversion_dot_bull': True,
             },
             'reversion_dot_bear': {
+                'tags': ['bearish', 'reversal'],
                 'reversion_dot_bear': True,
             },
             'monster_eye_bull': {
+                'tags': ['bullish', 'reversal'],
                 'monster_eye_bull': True,
             },
             'monster_eye_bear': {
+                'tags': ['bearish', 'reversal'],
                 'monster_eye_bear': True,
             },
             'monster_eye_bull_divergence': {
+                'tags': ['bullish', 'reversal', 'divergence'],
                 'monster_eye_bull':           True,
                 'bullish_divergence_class_a': True,
             },
             'monster_eye_bear_divergence': {
+                'tags': ['bearish', 'reversal', 'divergence'],
                 'monster_eye_bear':           True,
                 'bearish_divergence_class_a': True,
             },
             'compression': {
+                'tags': ['neutral', 'compression'],
                 'in_compression': True,
             },
             'compression_fired': {
+                'tags': ['neutral', 'breakout'],
                 'compression_just_ended': True,
             },
             'compression_bull_setup': {
+                'tags': ['bullish', 'compression'],
                 'in_compression': True,
                 'above_zero':     True,
             },
             'compression_bear_setup': {
+                'tags': ['bearish', 'compression'],
                 'in_compression': True,
                 'below_zero':     True,
             },
             'pullback_buy_accumulation': {
+                'tags': ['bullish', 'entry', 'extreme'],
                 'in_accumulation':   True,
                 'oscillator_rising': True,
             },
             'pullback_buy_zero_cross': {
+                'tags': ['bullish', 'entry', 'momentum'],
                 'crossed_above_zero': True,
             },
             'pullback_short_distribution': {
+                'tags': ['bearish', 'entry', 'extreme'],
                 'in_distribution':    True,
                 'oscillator_falling': True,
             },
             'pullback_short_zero_cross': {
+                'tags': ['bearish', 'entry', 'momentum'],
                 'crossed_below_zero': True,
             },
             'bullish_divergence_strong': {
+                'tags': ['bullish', 'divergence', 'reversal'],
                 'bullish_divergence_class_a': True,
             },
             'bullish_divergence_any': {
+                'tags': ['bullish', 'divergence'],
                 'any_bullish_divergence': True,
             },
             'bullish_divergence_confirmed': {
+                'tags': ['bullish', 'divergence', 'reversal', 'entry'],
                 'bullish_divergence_class_a': True,
                 'leaving_accumulation':       True,
             },
             'bullish_divergence_extreme_confirmed': {
+                'tags': ['bullish', 'divergence', 'reversal', 'entry'],
                 'bullish_divergence_class_a': True,
                 'leaving_extreme_down':       True,
             },
             'hidden_bull_continuation': {
+                'tags': ['bullish', 'divergence', 'continuation'],
                 'hidden_bullish_divergence': True,
                 'above_zero':                True,
             },
             'bearish_divergence_strong': {
+                'tags': ['bearish', 'divergence', 'reversal'],
                 'bearish_divergence_class_a': True,
             },
             'bearish_divergence_any': {
+                'tags': ['bearish', 'divergence'],
                 'any_bearish_divergence': True,
             },
             'bearish_divergence_confirmed': {
+                'tags': ['bearish', 'divergence', 'reversal', 'entry'],
                 'bearish_divergence_class_a': True,
                 'leaving_distribution':       True,
             },
             'hidden_bear_continuation': {
+                'tags': ['bearish', 'divergence', 'continuation'],
                 'hidden_bearish_divergence': True,
                 'below_zero':                True,
             },
             'strong_bull': {
+                'tags': ['bullish', 'trend', 'momentum'],
                 'in_neutral_up':     True,
                 'oscillator_rising': True,
                 'above_zero':        True,
             },
             'strong_bear': {
+                'tags': ['bearish', 'trend', 'momentum'],
                 'in_neutral_down':    True,
                 'oscillator_falling': True,
                 'below_zero':         True,
             },
             'mean_reversion_bull': {
+                'tags': ['bullish', 'reversal', 'extreme'],
                 'in_accumulation':   True,
                 'oscillator_rising': True,
             },
             'mean_reversion_bear': {
+                'tags': ['bearish', 'reversal', 'extreme'],
                 'in_distribution':    True,
                 'oscillator_falling': True,
             },

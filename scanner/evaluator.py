@@ -3,6 +3,8 @@ SUFFIX_OPS = ('__gte', '__lte', '__gt', '__lt', '__in')
 
 def evaluate_subcondition(raw: dict, subcondition: dict) -> bool:
     for key, threshold in subcondition.items():
+        if key == 'tags':
+            continue
         op = None
         field = key
         for suffix in SUFFIX_OPS:
