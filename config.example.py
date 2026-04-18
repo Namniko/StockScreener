@@ -250,6 +250,425 @@ INDICATORS = {
         }
     },
 
+    'macd': {
+        'module': 'stage2.macd',
+        'params': {
+            'fast_period':        12,
+            'slow_period':        26,
+            'signal_period':      9,
+            'divergence_lookback': 14,
+        },
+        'output_fields': [
+            'macd_line', 'signal_line', 'histogram',
+            'prev_macd_line', 'prev_signal_line', 'prev_histogram',
+            'macd_above_zero', 'macd_below_zero',
+            'macd_crossed_above_zero', 'macd_crossed_below_zero',
+            'macd_above_signal', 'macd_below_signal',
+            'macd_crossed_above_signal', 'macd_crossed_below_signal',
+            'histogram_positive', 'histogram_negative',
+            'histogram_rising', 'histogram_falling',
+            'histogram_above_zero_rising', 'histogram_below_zero_falling',
+            'histogram_above_zero_falling', 'histogram_below_zero_rising',
+            'bullish_divergence', 'bearish_divergence',
+            'macd_signal_gap', 'macd_signal_gap_pct', 'histogram_magnitude',
+        ],
+        'subconditions': {
+            'signal_crossover_bull': {
+                'macd_crossed_above_signal': True,
+            },
+            'signal_crossover_bear': {
+                'macd_crossed_below_signal': True,
+            },
+            'signal_crossover_bull_above_zero': {
+                'macd_crossed_above_signal': True,
+                'macd_above_zero':           True,
+            },
+            'signal_crossover_bear_below_zero': {
+                'macd_crossed_below_signal': True,
+                'macd_below_zero':           True,
+            },
+            'zero_cross_bull': {
+                'macd_crossed_above_zero': True,
+            },
+            'zero_cross_bear': {
+                'macd_crossed_below_zero': True,
+            },
+            'bullish_trend': {
+                'macd_above_zero':   True,
+                'macd_above_signal': True,
+            },
+            'bearish_trend': {
+                'macd_below_zero':   True,
+                'macd_below_signal': True,
+            },
+            'bullish_bias': {
+                'macd_above_zero': True,
+            },
+            'bearish_bias': {
+                'macd_below_zero': True,
+            },
+            'histogram_bull_expanding': {
+                'histogram_above_zero_rising': True,
+            },
+            'histogram_bear_expanding': {
+                'histogram_below_zero_falling': True,
+            },
+            'histogram_bull_fading': {
+                'histogram_above_zero_falling': True,
+            },
+            'histogram_bear_fading': {
+                'histogram_below_zero_rising': True,
+            },
+            'bullish_divergence': {
+                'bullish_divergence': True,
+            },
+            'bearish_divergence': {
+                'bearish_divergence': True,
+            },
+            'bullish_divergence_confirmed': {
+                'bullish_divergence':        True,
+                'macd_crossed_above_signal': True,
+            },
+            'bearish_divergence_confirmed': {
+                'bearish_divergence':        True,
+                'macd_crossed_below_signal': True,
+            },
+            'stretched_bull': {
+                'histogram_positive':       True,
+                'macd_signal_gap_pct__gte': 0.5,
+            },
+            'stretched_bear': {
+                'histogram_negative':       True,
+                'macd_signal_gap_pct__gte': 0.5,
+            },
+            'strong_bull': {
+                'macd_above_zero':             True,
+                'macd_above_signal':           True,
+                'histogram_above_zero_rising': True,
+            },
+            'strong_bear': {
+                'macd_below_zero':              True,
+                'macd_below_signal':            True,
+                'histogram_below_zero_falling': True,
+            },
+            'pullback_buy_setup': {
+                'macd_above_zero':              True,
+                'histogram_above_zero_falling': True,
+            },
+            'pullback_short_setup': {
+                'macd_below_zero':             True,
+                'histogram_below_zero_rising': True,
+            },
+        }
+    },
+
+    'bollinger_bands': {
+        'module': 'stage2.bollinger_bands',
+        'params': {
+            'period':             20,
+            'std_dev_mult':       2.0,
+            'bandwidth_lookback': 125,
+        },
+        'output_fields': [
+            'upper_band', 'middle_band', 'lower_band',
+            'prev_upper_band', 'prev_middle_band', 'prev_lower_band',
+            'close', 'percent_b', 'prev_percent_b',
+            'close_above_middle', 'close_below_middle',
+            'close_above_upper', 'close_below_lower',
+            'close_near_upper', 'close_near_lower',
+            'crossed_above_middle', 'crossed_below_middle',
+            'bandwidth', 'prev_bandwidth',
+            'bandwidth_expanding', 'bandwidth_contracting',
+            'bandwidth_percentile', 'is_squeeze', 'squeeze_just_fired',
+            'walking_upper_band', 'walking_lower_band',
+            'walk_upper_bar_count', 'walk_lower_bar_count',
+            'breakout_upper', 'breakout_lower',
+            'prev_breakout_upper', 'prev_breakout_lower',
+            'breakout_upper_new', 'breakout_lower_new',
+            'returned_inside_from_upper', 'returned_inside_from_lower',
+            'upper_band_rejection', 'lower_band_rejection',
+            'bullish_trend', 'bearish_trend',
+        ],
+        'subconditions': {
+            'squeeze': {
+                'is_squeeze': True,
+            },
+            'squeeze_fired': {
+                'squeeze_just_fired': True,
+            },
+            'high_volatility': {
+                'bandwidth_percentile__gte': 75,
+                'bandwidth_expanding':       True,
+            },
+            'volatility_expanding': {
+                'bandwidth_expanding': True,
+            },
+            'volatility_contracting': {
+                'bandwidth_contracting': True,
+            },
+            'bullish_trend': {
+                'close_above_middle': True,
+            },
+            'bearish_trend': {
+                'close_below_middle': True,
+            },
+            'bullish_trend_strong': {
+                'close_above_middle':  True,
+                'bandwidth_expanding': True,
+            },
+            'bearish_trend_strong': {
+                'close_below_middle':  True,
+                'bandwidth_expanding': True,
+            },
+            'middle_band_cross_bull': {
+                'crossed_above_middle': True,
+            },
+            'middle_band_cross_bear': {
+                'crossed_below_middle': True,
+            },
+            'near_upper_band': {
+                'close_near_upper': True,
+            },
+            'near_lower_band': {
+                'close_near_lower': True,
+            },
+            'outside_upper_band': {
+                'breakout_upper': True,
+            },
+            'outside_lower_band': {
+                'breakout_lower': True,
+            },
+            'breakout_bull': {
+                'breakout_upper_new': True,
+            },
+            'breakout_bear': {
+                'breakout_lower_new': True,
+            },
+            'breakout_bull_squeeze': {
+                'breakout_upper_new': True,
+                'squeeze_just_fired': True,
+            },
+            'breakout_bear_squeeze': {
+                'breakout_lower_new': True,
+                'squeeze_just_fired': True,
+            },
+            'walking_upper': {
+                'walking_upper_band': True,
+            },
+            'walking_lower': {
+                'walking_lower_band': True,
+            },
+            'upper_band_rejection': {
+                'upper_band_rejection': True,
+            },
+            'lower_band_rejection': {
+                'lower_band_rejection': True,
+            },
+            'lower_band_rejection_bullish_trend': {
+                'lower_band_rejection': True,
+                'close_above_middle':   True,
+            },
+            'upper_band_rejection_bearish_trend': {
+                'upper_band_rejection': True,
+                'close_below_middle':   True,
+            },
+            'squeeze_bull_setup': {
+                'is_squeeze':         True,
+                'close_above_middle': True,
+            },
+            'squeeze_bear_setup': {
+                'is_squeeze':         True,
+                'close_below_middle': True,
+            },
+            'oversold_reversal': {
+                'close_near_lower':      True,
+                'bandwidth_contracting': True,
+            },
+            'overbought_reversal': {
+                'close_near_upper':      True,
+                'bandwidth_contracting': True,
+            },
+        }
+    },
+
+    'saty_phase_oscillator': {
+        'module': 'stage2.saty_phase_oscillator',
+        'params': {
+            'ema_period':          21,
+            'atr_period':          14,
+            'smooth_period':       3,
+            'divergence_lookback': 20,
+        },
+        'output_fields': [
+            'oscillator', 'prev_oscillator', 'raw_signal', 'pivot', 'atr',
+            'zone', 'prev_zone',
+            'in_extreme_up', 'in_distribution', 'in_neutral_up', 'in_zero_band',
+            'in_neutral_down', 'in_accumulation', 'in_extreme_down',
+            'above_zero', 'below_zero',
+            'leaving_distribution', 'leaving_extreme_up',
+            'leaving_accumulation', 'leaving_extreme_down',
+            'crossed_above_zero', 'crossed_below_zero',
+            'crossed_above_neutral_up', 'crossed_below_neutral_down',
+            'reversion_dot_bull', 'reversion_dot_bear',
+            'prev_reversion_dot_bull', 'prev_reversion_dot_bear',
+            'monster_eye_bull', 'monster_eye_bear',
+            'oscillator_rising', 'oscillator_falling',
+            'in_compression', 'compression_just_ended',
+            'bullish_divergence_class_a', 'bullish_divergence_class_b',
+            'bullish_divergence_class_c', 'hidden_bullish_divergence',
+            'bearish_divergence_class_a', 'bearish_divergence_class_b',
+            'bearish_divergence_class_c', 'hidden_bearish_divergence',
+            'any_bullish_divergence', 'any_bearish_divergence',
+            'strong_bullish_divergence', 'strong_bearish_divergence',
+        ],
+        'subconditions': {
+            'in_accumulation': {
+                'in_accumulation': True,
+            },
+            'in_extreme_down': {
+                'in_extreme_down': True,
+            },
+            'in_distribution': {
+                'in_distribution': True,
+            },
+            'in_extreme_up': {
+                'in_extreme_up': True,
+            },
+            'bullish_momentum': {
+                'in_neutral_up':     True,
+                'oscillator_rising': True,
+            },
+            'above_zero': {
+                'above_zero': True,
+            },
+            'below_zero': {
+                'below_zero': True,
+            },
+            'leaving_accumulation': {
+                'leaving_accumulation': True,
+            },
+            'leaving_extreme_down': {
+                'leaving_extreme_down': True,
+            },
+            'leaving_distribution': {
+                'leaving_distribution': True,
+            },
+            'leaving_extreme_up': {
+                'leaving_extreme_up': True,
+            },
+            'zero_cross_bull': {
+                'crossed_above_zero': True,
+            },
+            'zero_cross_bear': {
+                'crossed_below_zero': True,
+            },
+            'entering_bull_zone': {
+                'crossed_above_neutral_up': True,
+            },
+            'entering_bear_zone': {
+                'crossed_below_neutral_down': True,
+            },
+            'reversion_dot_bull': {
+                'reversion_dot_bull': True,
+            },
+            'reversion_dot_bear': {
+                'reversion_dot_bear': True,
+            },
+            'monster_eye_bull': {
+                'monster_eye_bull': True,
+            },
+            'monster_eye_bear': {
+                'monster_eye_bear': True,
+            },
+            'monster_eye_bull_divergence': {
+                'monster_eye_bull':           True,
+                'bullish_divergence_class_a': True,
+            },
+            'monster_eye_bear_divergence': {
+                'monster_eye_bear':           True,
+                'bearish_divergence_class_a': True,
+            },
+            'compression': {
+                'in_compression': True,
+            },
+            'compression_fired': {
+                'compression_just_ended': True,
+            },
+            'compression_bull_setup': {
+                'in_compression': True,
+                'above_zero':     True,
+            },
+            'compression_bear_setup': {
+                'in_compression': True,
+                'below_zero':     True,
+            },
+            'pullback_buy_accumulation': {
+                'in_accumulation':   True,
+                'oscillator_rising': True,
+            },
+            'pullback_buy_zero_cross': {
+                'crossed_above_zero': True,
+            },
+            'pullback_short_distribution': {
+                'in_distribution':    True,
+                'oscillator_falling': True,
+            },
+            'pullback_short_zero_cross': {
+                'crossed_below_zero': True,
+            },
+            'bullish_divergence_strong': {
+                'bullish_divergence_class_a': True,
+            },
+            'bullish_divergence_any': {
+                'any_bullish_divergence': True,
+            },
+            'bullish_divergence_confirmed': {
+                'bullish_divergence_class_a': True,
+                'leaving_accumulation':       True,
+            },
+            'bullish_divergence_extreme_confirmed': {
+                'bullish_divergence_class_a': True,
+                'leaving_extreme_down':       True,
+            },
+            'hidden_bull_continuation': {
+                'hidden_bullish_divergence': True,
+                'above_zero':                True,
+            },
+            'bearish_divergence_strong': {
+                'bearish_divergence_class_a': True,
+            },
+            'bearish_divergence_any': {
+                'any_bearish_divergence': True,
+            },
+            'bearish_divergence_confirmed': {
+                'bearish_divergence_class_a': True,
+                'leaving_distribution':       True,
+            },
+            'hidden_bear_continuation': {
+                'hidden_bearish_divergence': True,
+                'below_zero':                True,
+            },
+            'strong_bull': {
+                'in_neutral_up':     True,
+                'oscillator_rising': True,
+                'above_zero':        True,
+            },
+            'strong_bear': {
+                'in_neutral_down':    True,
+                'oscillator_falling': True,
+                'below_zero':         True,
+            },
+            'mean_reversion_bull': {
+                'in_accumulation':   True,
+                'oscillator_rising': True,
+            },
+            'mean_reversion_bear': {
+                'in_distribution':    True,
+                'oscillator_falling': True,
+            },
+        }
+    },
+
 }
 
 

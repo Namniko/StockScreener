@@ -54,6 +54,82 @@ PRESETS = {
         'saty_ribbon.bullish_bias'
     ),
 
+    # ── MACD setups ─────────────────────────────────────────────────────
+    'macd_bull_crossover': (
+        'macd.signal_crossover_bull'
+        '+'
+        'macd.bullish_trend'
+    ),
+    'macd_ribbon_bull': (
+        'saty_ribbon.pullback_buy'
+        '+'
+        'macd.strong_bull'
+    ),
+    'macd_squeeze_bull': (
+        'macd.bullish_trend'
+        '+'
+        '(ttm_squeeze.anticipatory_bull|ttm_squeeze.anticipatory_bull_orange)'
+    ),
+    'triple_confluence_bull': (
+        'saty_ribbon.pullback_buy'
+        '+'
+        'macd.strong_bull'
+        '+'
+        '(ttm_squeeze.anticipatory_bull|ttm_squeeze.anticipatory_bull_orange)'
+    ),
+
+    # ── Bollinger Band setups ────────────────────────────────────────────
+    'bb_squeeze_bull': (
+        'bollinger_bands.squeeze_bull_setup'
+        '+'
+        '(ttm_squeeze.anticipatory_bull|ttm_squeeze.anticipatory_bull_orange)'
+    ),
+    'bb_breakout_bull': (
+        'bollinger_bands.breakout_bull_squeeze'
+        '+'
+        'saty_ribbon.bullish_bias'
+    ),
+    'bb_oversold_reversal': (
+        'bollinger_bands.lower_band_rejection_bullish_trend'
+        '+'
+        'macd.signal_crossover_bull'
+    ),
+    'bb_ribbon_bull': (
+        'bollinger_bands.bullish_trend_strong'
+        '+'
+        'saty_ribbon.pullback_buy'
+    ),
+
+    # ── Saty Phase Oscillator setups ─────────────────────────────────────
+    'spo_pullback_buy': (
+        'saty_phase_oscillator.leaving_accumulation'
+        '|saty_phase_oscillator.pullback_buy_accumulation'
+    ),
+    'spo_monster_eye_bull': (
+        'saty_phase_oscillator.monster_eye_bull'
+    ),
+    'spo_monster_eye_bull_confirmed': (
+        'saty_phase_oscillator.monster_eye_bull_divergence'
+    ),
+    'ribbon_spo_pullback': (
+        'saty_ribbon.pullback_buy'
+        '+'
+        '(saty_phase_oscillator.leaving_accumulation'
+        '|saty_phase_oscillator.reversion_dot_bull)'
+    ),
+    'ribbon_spo_monster_eye': (
+        'saty_ribbon.pullback_buy'
+        '+'
+        'saty_phase_oscillator.monster_eye_bull'
+    ),
+    'triple_confluence_spo_bull': (
+        'saty_ribbon.pullback_buy'
+        '+'
+        '(saty_phase_oscillator.leaving_accumulation|saty_phase_oscillator.monster_eye_bull)'
+        '+'
+        '(ttm_squeeze.anticipatory_bull|ttm_squeeze.anticipatory_bull_orange)'
+    ),
+
 }
 
 
