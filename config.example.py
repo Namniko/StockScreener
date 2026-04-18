@@ -251,3 +251,117 @@ INDICATORS = {
     },
 
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEEKLY TIMEFRAME INDICATORS (optional)
+#
+# To add weekly versions of any indicator:
+#   1. Uncomment the entry below and add it inside the INDICATORS dict above.
+#   2. Set 'interval': '1wk' — the fetcher will pull weekly bars automatically.
+#   3. Set 'history_weeks' to the number of weekly bars you want (100 ≈ 2 years).
+#   4. Define subconditions just like daily ones — the same module handles both.
+#   5. Reference in presets as e.g. 'saty_ribbon_weekly.strong_bull'.
+#
+# The indicator module code does not change at all — it receives a weekly
+# DataFrame instead of a daily one and returns the same output fields.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# WEEKLY EXAMPLES — paste these entries into INDICATORS above to activate:
+#
+#   'saty_ribbon_weekly': {
+#       'module':         'stage2.saty_ribbon',
+#       'interval':       '1wk',     # tells the fetcher to use weekly bars
+#       'history_weeks':  100,        # ~2 years of weekly data
+#       'params': {
+#           'fast_ema':      8,
+#           'secondary_ema': 13,
+#           'pivot_ema':     21,
+#           'slow_ema':      48,
+#           'longterm_ema':  200,
+#       },
+#       'output_fields': [           # same fields as saty_ribbon — weekly values
+#           'ema8', 'ema13', 'ema21', 'ema48', 'ema200',
+#           'close', 'high', 'low', 'open',
+#           'close_above_ema8',   'close_above_ema13',
+#           'close_above_ema21',  'close_above_ema48',
+#           'close_above_ema200',
+#           'low_touched_ema8',   'low_touched_ema13',
+#           'low_touched_ema21',
+#           'high_touched_ema8',  'high_touched_ema13',
+#           'high_touched_ema21',
+#           'ema8_above_ema13',   'ema13_above_ema21',
+#           'ema21_above_ema48',  'ema48_above_ema200',
+#           'ema8_above_ema21',   'ema8_above_ema48',
+#           'ema21_above_ema200',
+#           'ema8_slope',         'ema13_slope',
+#           'ema21_slope',        'ema48_slope',        'ema200_slope',
+#           'ema8_slope_positive', 'ema21_slope_positive', 'ema48_slope_positive',
+#           'ema8_ema13_gap_pct', 'ema21_ema48_gap_pct', 'ema48_ema200_gap_pct',
+#           'ema21_crossed_above_ema48_recently',
+#           'ema21_crossed_below_ema48_recently',
+#           'ema21_crossed_above_ema200_recently',
+#           'ema21_crossed_below_ema200_recently',
+#           'prev_close_above_ema21', 'prev_close_above_ema48',
+#       ],
+#       'subconditions': {
+#           'weekly_strong_bull': {
+#               'ema8_above_ema21':   True,
+#               'ema21_above_ema48':  True,
+#               'ema48_above_ema200': True,
+#               'close_above_ema21':  True,
+#           },
+#           'weekly_pullback_buy': {
+#               'close_above_ema21': True,
+#               'low_touched_ema21': True,
+#               'ema21_above_ema48': True,
+#           },
+#           'weekly_bullish_bias': {
+#               'close_above_ema21': True,
+#           },
+#           'weekly_bearish_bias': {
+#               'close_above_ema21': False,
+#           },
+#       }
+#   },
+#
+#   'ttm_squeeze_weekly': {
+#       'module':         'stage2.ttm_squeeze',
+#       'interval':       '1wk',
+#       'history_weeks':  100,
+#       'params': {
+#           'length':       20,
+#           'bb_mult':      2.0,
+#           'kc_mult_high': 1.0,
+#           'kc_mult_mid':  1.5,
+#           'kc_mult_low':  2.0,
+#       },
+#       'output_fields': [           # same fields as ttm_squeeze — weekly values
+#           'dot_color', 'prev_dot_color', 'compression_bars',
+#           'momentum_value', 'prev_momentum_value',
+#           'momentum_above_zero', 'momentum_rising',
+#           'momentum_color', 'prev_momentum_color',
+#           'squeeze_start_price', 'atr', 'atr_distance', 'first_green_dot',
+#           'bb_upper', 'bb_lower',
+#           'kc_upper_low', 'kc_lower_low',
+#           'kc_upper_mid', 'kc_lower_mid',
+#           'kc_upper_high', 'kc_lower_high',
+#       ],
+#       'subconditions': {
+#           'weekly_anticipatory_bull': {
+#               'dot_color':             ['Orange', 'Red'],
+#               'compression_bars__gte': 3,
+#               'momentum_above_zero':   True,
+#               'momentum_rising':       True,
+#           },
+#           'weekly_high_compression': {
+#               'dot_color':             ['Orange'],
+#               'compression_bars__gte': 2,
+#           },
+#           'weekly_confirmed_bull': {
+#               'first_green_dot':       True,
+#               'momentum_above_zero':   True,
+#               'atr_distance__lte':     1.0,
+#           },
+#       }
+#   },

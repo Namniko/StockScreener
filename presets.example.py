@@ -53,4 +53,48 @@ PRESETS = {
         '+'
         'saty_ribbon.bullish_bias'
     ),
+
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEEKLY PRESET EXAMPLES
+#
+# These require the weekly indicator entries to be uncommented in config.py
+# first (see the weekly section at the bottom of config.example.py).
+# Once active, weekly and daily subconditions can be freely mixed with +/|.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Paste these into PRESETS above to activate:
+#
+#   # Daily pullback with weekly trend confirmation
+#   'bullish_pullback_weekly_confirmed': (
+#       'saty_ribbon.pullback_buy'
+#       '+'
+#       '(ttm_squeeze.anticipatory_bull|ttm_squeeze.anticipatory_bull_orange)'
+#       '+'
+#       'saty_ribbon_weekly.weekly_bullish_bias'
+#   ),
+#
+#   # Weekly squeeze firing with daily ribbon aligned
+#   'weekly_squeeze_bull': (
+#       'ttm_squeeze_weekly.weekly_anticipatory_bull'
+#       '+'
+#       'saty_ribbon.bullish_bias'
+#   ),
+#
+#   # High-conviction: weekly squeeze + daily pullback entry
+#   'weekly_squeeze_daily_entry': (
+#       'ttm_squeeze_weekly.weekly_anticipatory_bull'
+#       '+'
+#       'saty_ribbon.pullback_buy'
+#       '+'
+#       '(ttm_squeeze.anticipatory_bull|ttm_squeeze.building)'
+#   ),
+#
+#   # Weekly trend intact, weekly squeeze compressing
+#   'weekly_compression_watch': (
+#       'saty_ribbon_weekly.weekly_strong_bull'
+#       '+'
+#       'ttm_squeeze_weekly.weekly_high_compression'
+#   ),

@@ -82,13 +82,26 @@ def main():
         sys.exit(0)
 
     # ── Stage 2 — fetch history ──────────────────────────────────────────
-    from stage2.data_fetcher import fetch_history
-    print(f'\nFetching history for {len(tickers)} tickers...')
+    from stage2.data_fetcher import fetch_history, fetch_history_weekly
+
+    daily_indicators   = [n for n in required_indicators
+                          if INDICATORS[n].get('interval', '1d') == '1d']
+    weekly_indicators  = [n for n in required_indicators
+                          if INDICATORS[n].get('interval') == '1wk']
+
+    print(f'\nFetching daily history for {len(tickers)} tickers...')
     history = fetch_history(tickers, days=STAGE1['history_days'])
-    print(f'History available for {len(history)} tickers.')
+    print(f'Daily history available for {len(history)} tickers.')
+
+    weekly_history: dict[str, object] = {}
+    if weekly_indicators:
+        max_weeks = max(INDICATORS[n].get('history_weeks', 100) for n in weekly_indicators)
+        print(f'Fetching weekly history ({max_weeks} weeks) for {len(tickers)} tickers...')
+        weekly_history = fetch_history_weekly(tickers, weeks=max_weeks)
+        print(f'Weekly history available for {len(weekly_history)} tickers.')
 
     if not history:
-        print('No history fetched. Exiting.')
+        print('No daily history fetched. Exiting.')
         sys.exit(0)
 
     # ── Stage 2 — compute indicators ────────────────────────────────────
@@ -96,9 +109,16 @@ def main():
     print('\nComputing indicators...')
 
     raw_outputs_all: dict[str, dict] = {}
-    for ticker, df in history.items():
+    for ticker in history:
         raw_outputs_all[ticker] = {}
+
         for ind_name in required_indicators:
+            interval = INDICATORS[ind_name].get('interval', '1d')
+            source   = weekly_history if interval == '1wk' else history
+            df = source.get(ticker)
+            if df is None:
+                continue
+
             module = INDICATOR_MODULES.get(ind_name)
             if module is None:
                 print(f'  Warning: no module for indicator {ind_name!r}')
