@@ -49,41 +49,49 @@ def _monster_eyes(osc: pd.Series, lookback: int) -> tuple[bool, bool]:
 
 
 def _detect_divergences(
-    price_low:   pd.Series,
-    price_high:  pd.Series,
-    osc:         pd.Series,
-    lb_left:     int,
-    lb_right:    int,
-    range_lower: int,
-    range_upper: int,
+    price_low:      pd.Series,
+    price_high:     pd.Series,
+    osc:            pd.Series,
+    lb_left:        int,
+    lb_right:       int,
+    range_lower:    int,
+    range_upper:    int,
+    signal_lookback: int = 10,
 ) -> dict:
     """
-    Pivot-based divergence detection matching the reference PineScript implementation.
+    Pivot-based divergence detection.
 
-    Pivots are detected on the oscillator (lbLeft bars lower on left, lbRight on right).
-    The confirmed pivot is lb_right bars before the current bar.
-    The previous pivot must have occurred between range_lower and range_upper bars before
-    the current pivot. Price comparison uses low (bull) and high (bear), not close.
+    Pivots are detected on the oscillator (lb_left bars lower/higher on left,
+    lb_right on right). The previous pivot must be range_lower..range_upper bars
+    before the current pivot. Price comparison uses low (bull) and high (bear).
+
+    signal_lookback: number of recent bars to scan for a fired pivot. A divergence
+    that confirmed within this window returns True, so the signal persists rather
+    than firing for a single bar only.
 
     Signals:
       bullish_divergence:        price lower low  + osc higher low  (reversal)
       hidden_bullish_divergence: price higher low + osc lower low   (continuation)
       bearish_divergence:        price higher high + osc lower high (reversal)
       hidden_bearish_divergence: price lower high + osc higher high (continuation)
+
+    bull_div_pivot_osc / bear_div_pivot_osc: oscillator value at the most recent
+    confirmed divergence pivot (0.0 when no divergence active in the window).
     """
     NO_DIV = {
         'bullish_divergence':        False,
         'hidden_bullish_divergence': False,
         'bearish_divergence':        False,
         'hidden_bearish_divergence': False,
+        'bull_div_pivot_osc':        0.0,
+        'bear_div_pivot_osc':        0.0,
     }
 
     min_len = lb_left + lb_right + range_upper + 2
     if len(osc) < min_len:
         return NO_DIV
 
-    n     = len(osc)
-    p1    = n - 1 - lb_right   # index of the confirmed current pivot
+    n = len(osc)
 
     def is_pivot_low(idx: int) -> bool:
         if idx - lb_left < 0 or idx + lb_right >= n:
@@ -108,33 +116,55 @@ def _detect_divergences(
                 return p0
         return None
 
-    # ── Bullish (pivot lows) ──────────────────────────────────────────────
-    bull_div    = False
-    hidden_bull = False
-    if is_pivot_low(p1):
-        p0 = find_prev_pivot(p1, is_pivot_low)
-        if p0 is not None:
-            osc_p1  = float(osc.iloc[p1]);       osc_p0  = float(osc.iloc[p0])
-            low_p1  = float(price_low.iloc[p1]); low_p0  = float(price_low.iloc[p0])
-            bull_div    = low_p1 < low_p0 and osc_p1 > osc_p0
-            hidden_bull = low_p1 > low_p0 and osc_p1 < osc_p0
+    bull_div           = False
+    hidden_bull        = False
+    bull_div_pivot_osc = 0.0
+    bear_div           = False
+    hidden_bear        = False
+    bear_div_pivot_osc = 0.0
 
-    # ── Bearish (pivot highs) ─────────────────────────────────────────────
-    bear_div    = False
-    hidden_bear = False
-    if is_pivot_high(p1):
-        p0 = find_prev_pivot(p1, is_pivot_high)
-        if p0 is not None:
-            osc_p1   = float(osc.iloc[p1]);        osc_p0   = float(osc.iloc[p0])
-            high_p1  = float(price_high.iloc[p1]); high_p0  = float(price_high.iloc[p0])
-            bear_div    = high_p1 > high_p0 and osc_p1 < osc_p0
-            hidden_bear = high_p1 < high_p0 and osc_p1 > osc_p0
+    # Scan the last signal_lookback pivot positions (most recent first).
+    # Stop each side as soon as a match is found — that gives the most recent signal.
+    p1_base = n - 1 - lb_right
+    for offset in range(signal_lookback):
+        p1 = p1_base - offset
+        if p1 < lb_left:
+            break
+
+        if not bull_div and not hidden_bull and is_pivot_low(p1):
+            p0 = find_prev_pivot(p1, is_pivot_low)
+            if p0 is not None:
+                osc_p1 = float(osc.iloc[p1]);       osc_p0 = float(osc.iloc[p0])
+                low_p1 = float(price_low.iloc[p1]); low_p0 = float(price_low.iloc[p0])
+                if low_p1 < low_p0 and osc_p1 > osc_p0:
+                    bull_div           = True
+                    bull_div_pivot_osc = osc_p1
+                elif low_p1 > low_p0 and osc_p1 < osc_p0:
+                    hidden_bull        = True
+                    bull_div_pivot_osc = osc_p1
+
+        if not bear_div and not hidden_bear and is_pivot_high(p1):
+            p0 = find_prev_pivot(p1, is_pivot_high)
+            if p0 is not None:
+                osc_p1  = float(osc.iloc[p1]);        osc_p0  = float(osc.iloc[p0])
+                high_p1 = float(price_high.iloc[p1]); high_p0 = float(price_high.iloc[p0])
+                if high_p1 > high_p0 and osc_p1 < osc_p0:
+                    bear_div           = True
+                    bear_div_pivot_osc = osc_p1
+                elif high_p1 < high_p0 and osc_p1 > osc_p0:
+                    hidden_bear        = True
+                    bear_div_pivot_osc = osc_p1
+
+        if (bull_div or hidden_bull) and (bear_div or hidden_bear):
+            break
 
     return {
         'bullish_divergence':        bull_div,
         'hidden_bullish_divergence': hidden_bull,
         'bearish_divergence':        bear_div,
         'hidden_bearish_divergence': hidden_bear,
+        'bull_div_pivot_osc':        bull_div_pivot_osc,
+        'bear_div_pivot_osc':        bear_div_pivot_osc,
     }
 
 
@@ -169,10 +199,11 @@ def compute(df: pd.DataFrame, params: dict) -> dict:
     atr_p       = params['atr_period']
     smooth      = params['smooth_period']
     me_lb       = int(params.get('monster_eye_lookback', 20))
-    div_lb_l    = int(params.get('div_pivot_left',  3))
-    div_lb_r    = int(params.get('div_pivot_right', 1))
-    div_range_l = int(params.get('div_range_lower', 5))
-    div_range_u = int(params.get('div_range_upper', 60))
+    div_lb_l    = int(params.get('div_pivot_left',    3))
+    div_lb_r    = int(params.get('div_pivot_right',   1))
+    div_range_l = int(params.get('div_range_lower',   5))
+    div_range_u = int(params.get('div_range_upper',  60))
+    div_sig_lb  = int(params.get('signal_lookback',  10))
 
     close = df['Close']
     high  = df['High']
@@ -210,7 +241,7 @@ def compute(df: pd.DataFrame, params: dict) -> dict:
 
     div_results = _detect_divergences(
         df['Low'], df['High'], oscillator,
-        div_lb_l, div_lb_r, div_range_l, div_range_u,
+        div_lb_l, div_lb_r, div_range_l, div_range_u, div_sig_lb,
     )
 
     return {

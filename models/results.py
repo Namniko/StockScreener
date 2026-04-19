@@ -11,6 +11,7 @@ class IndicatorRawOutput:
 @dataclass
 class ScreenerResult:
     ticker: str
+    scan: str
     raw_outputs: dict        # {indicator_name: raw_values_dict}
     expression_matched: bool
     matched_subconditions: list = field(default_factory=list)

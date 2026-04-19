@@ -51,6 +51,7 @@ def build_result(
 
     return ScreenerResult(
         ticker=ticker,
+        scan=expression,
         raw_outputs=raw_outputs,
         expression_matched=matched,
         matched_subconditions=matched_subs,

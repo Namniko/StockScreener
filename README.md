@@ -124,6 +124,9 @@ python main.py --scan "ttm_squeeze.anticipatory_bull|ttm_squeeze.confirmed_bull"
 # Mixed with parentheses
 python main.py --scan "saty_ribbon.pullback_buy+(ttm_squeeze.anticipatory_bull|ttm_squeeze.confirmed_bull)"
 
+# Multiple scans — comma-separated, each runs independently, results merged into one file
+python main.py --scan "bullish_trend_setup,bullish_divergence_setup,saty_ribbon.inverse_vomy_warning"
+
 # Additional flags
 python main.py --scan bullish_pullback --limit 20
 python main.py --scan bullish_pullback --output output/results.xlsx

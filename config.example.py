@@ -281,11 +281,20 @@ INDICATORS = {
 
             # ── Reversal signals ─────────────────────────────────
             'vomy_warning': {
-                'tags': ['neutral', 'reversal'],
-                'tv_prefilter': {'close_above_ema21': True},
-                'ema8_above_ema13':          True,
+                'tags': ['bearish', 'reversal'],
+                'tv_prefilter': {'close_above_ema21': True, 'ema21_above_ema48': True},
+                'ema21_above_ema48':          True,
+                'ema8_above_ema13':           True,
                 'ema8_slope_positive':        False,
-                'ema8_ema13_gap_pct__lte':   0.5,
+                'ema8_ema13_gap_pct__lte':    0.5,
+            },
+            'inverse_vomy_warning': {
+                'tags': ['bullish', 'reversal'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'ema21_above_ema48':          False,
+                'ema8_above_ema13':           False,
+                'ema8_slope_positive':        True,
+                'ema8_ema13_gap_pct__lte':    0.5,
             },
             'violent_reversal_down': {
                 'tags': ['bearish', 'reversal'],
@@ -765,6 +774,7 @@ INDICATORS = {
             'div_pivot_right':      1,    # bars to the right of pivot to confirm
             'div_range_lower':      5,    # min bars between two pivots
             'div_range_upper':      60,   # max bars between two pivots
+            'signal_lookback':      10,   # bars a fired divergence stays active
         },
         'output_fields': [
             'oscillator', 'prev_oscillator', 'raw_signal', 'pivot', 'atr',
@@ -783,6 +793,7 @@ INDICATORS = {
             'in_compression', 'compression_just_ended',
             'bullish_divergence', 'hidden_bullish_divergence',
             'bearish_divergence', 'hidden_bearish_divergence',
+            'bull_div_pivot_osc', 'bear_div_pivot_osc',
         ],
         'subconditions': {
             'in_accumulation': {
@@ -914,13 +925,13 @@ INDICATORS = {
             },
             'bullish_divergence_confirmed': {
                 'tags': ['bullish', 'divergence', 'reversal', 'entry'],
-                'bullish_divergence':    True,
-                'leaving_accumulation': True,
+                'bullish_divergence':        True,
+                'bull_div_pivot_osc__lte':  -58.8,   # pivot in accumulation zone (±3 pt buffer on -61.8)
             },
             'bullish_divergence_extreme_confirmed': {
                 'tags': ['bullish', 'divergence', 'reversal', 'entry'],
-                'bullish_divergence':    True,
-                'leaving_extreme_down': True,
+                'bullish_divergence':        True,
+                'bull_div_pivot_osc__lte':  -97.0,   # pivot in extreme_down zone (±3 pt buffer on -100)
             },
             'hidden_bull_continuation': {
                 'tags': ['bullish', 'divergence', 'continuation'],
@@ -933,8 +944,13 @@ INDICATORS = {
             },
             'bearish_divergence_confirmed': {
                 'tags': ['bearish', 'divergence', 'reversal', 'entry'],
-                'bearish_divergence':    True,
-                'leaving_distribution': True,
+                'bearish_divergence':        True,
+                'bear_div_pivot_osc__gte':  58.8,    # pivot in distribution zone (±3 pt buffer on +61.8)
+            },
+            'bearish_divergence_extreme_confirmed': {
+                'tags': ['bearish', 'divergence', 'reversal', 'entry'],
+                'bearish_divergence':        True,
+                'bear_div_pivot_osc__gte':  97.0,    # pivot in extreme_up zone (±3 pt buffer on +100)
             },
             'hidden_bear_continuation': {
                 'tags': ['bearish', 'divergence', 'continuation'],

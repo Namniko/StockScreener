@@ -11,9 +11,9 @@ def _fmt_float(v) -> str:
     return f'{v:.4f}'
 
 
-def _resolve_value(source: str, r: ScreenerResult, scan: str, date_run: str):
+def _resolve_value(source: str, r: ScreenerResult, date_run: str):
     if source == 'ticker':                  return r.ticker
-    if source == 'scan':                    return scan
+    if source == 'scan':                    return r.scan
     if source == 'matched_subconditions':   return ', '.join(r.matched_subconditions)
     if source == 'in_sync':                 return r.in_sync
     if source == 'sync_note':               return r.sync_note
@@ -58,13 +58,16 @@ def print_results(results: list[ScreenerResult], scan: str = '') -> None:
         print('\nNo results matched the scan criteria.')
         return
 
+    scans = list(dict.fromkeys(r.scan for r in results))
+    header = scan if len(scans) == 1 else f'{len(scans)} scans'
     print(f'\n{"=" * 60}')
-    print(f'SCAN: {scan}  |  {len(results)} result(s)')
+    print(f'SCAN: {header}  |  {len(results)} result(s)')
     print(f'{"=" * 60}')
 
     for r in results:
         sync_mark = 'Y' if r.in_sync else 'N'
-        print(f'\nTICKER: {r.ticker}  |  IN SYNC: {sync_mark}  {r.sync_note}')
+        scan_label = f'  |  SCAN: {r.scan}' if len(scans) > 1 else ''
+        print(f'\nTICKER: {r.ticker}  |  IN SYNC: {sync_mark}  {r.sync_note}{scan_label}')
         print(f'MATCHED: {", ".join(r.matched_subconditions)}')
         print('-' * 50)
 
@@ -83,8 +86,8 @@ def print_results(results: list[ScreenerResult], scan: str = '') -> None:
     print(f'\n{"=" * 60}\n')
 
 
-def save_xlsx(results: list[ScreenerResult], path: str, scan: str,
-              indicators: dict, columns: list, aliases: dict) -> None:
+def save_xlsx(results: list[ScreenerResult], path: str, scan: str = '',
+              indicators: dict = None, columns: list = None, aliases: dict = None) -> None:
     try:
         import openpyxl
     except ImportError:
@@ -118,7 +121,7 @@ def save_xlsx(results: list[ScreenerResult], path: str, scan: str,
 
     rows = []
     for r in results:
-        row = {alias: _resolve_value(source, r, scan, date_run)
+        row = {alias: _resolve_value(source, r, date_run)
                for alias, source in col_map.items()}
         rows.append(row)
 
