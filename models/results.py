@@ -16,3 +16,4 @@ class ScreenerResult:
     matched_subconditions: list = field(default_factory=list)
     in_sync: bool = False
     sync_note: str = ''
+    tv_data: dict = field(default_factory=dict)  # Stage 1 fields: close, volume, market_cap_basic, sector, etc.

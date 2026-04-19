@@ -20,65 +20,121 @@ def _dot_states(osc_curr: float, osc_prev: float) -> tuple[bool, bool]:
     return dot_bull, dot_bear
 
 
-def _detect_divergences(price: pd.Series, osc: pd.Series, lookback: int) -> dict:
-    if len(price) < lookback + 1:
-        falses = {k: False for k in [
-            'bullish_divergence_class_a', 'bullish_divergence_class_b',
-            'bullish_divergence_class_c', 'hidden_bullish_divergence',
-            'bearish_divergence_class_a', 'bearish_divergence_class_b',
-            'bearish_divergence_class_c', 'hidden_bearish_divergence',
-            'any_bullish_divergence', 'any_bearish_divergence',
-            'strong_bullish_divergence', 'strong_bearish_divergence',
-        ]}
-        return falses
+def _monster_eyes(osc: pd.Series, lookback: int) -> tuple[bool, bool]:
+    """
+    Monster Eye: 2+ crossings of the ±61.8 boundary within `lookback` bars,
+    without the oscillator ever entering the zero band (-23.6 to +23.6).
 
-    tolerance = 0.02
-    window_p  = price.iloc[-lookback:-1]
-    curr_p    = float(price.iloc[-1])
-    curr_o    = float(osc.iloc[-1])
+    Bullish: 2+ upward crossings of -61.8, oscillator never reached > -23.6.
+    Bearish: 2+ downward crossings of +61.8, oscillator never reached < +23.6.
+    """
+    if len(osc) < lookback + 1:
+        return False, False
 
-    low_idx       = window_p.idxmin()
-    high_idx      = window_p.idxmax()
-    prior_p_low   = float(price[low_idx])
-    prior_o_low   = float(osc[low_idx])
-    prior_p_high  = float(price[high_idx])
-    prior_o_high  = float(osc[high_idx])
+    window = osc.iloc[-lookback:]
 
-    # Bullish reversal
-    bull_a = (curr_p < prior_p_low) and (curr_o > prior_o_low)
+    bull_crosses = sum(
+        1 for i in range(1, len(window))
+        if window.iloc[i - 1] <= -61.8 and window.iloc[i] > -61.8
+    )
+    monster_bull = bull_crosses >= 2 and float(window.max()) < -23.6
 
-    p_dbl_bot = abs(curr_p - prior_p_low) / max(abs(prior_p_low), 1e-9) < tolerance
-    bull_b    = p_dbl_bot and (curr_o > prior_o_low) and not bull_a
+    bear_crosses = sum(
+        1 for i in range(1, len(window))
+        if window.iloc[i - 1] >= 61.8 and window.iloc[i] < 61.8
+    )
+    monster_bear = bear_crosses >= 2 and float(window.min()) > 23.6
 
-    o_eq_low = abs(curr_o - prior_o_low) < (abs(prior_o_low) * tolerance + 1.0)
-    bull_c   = (curr_p < prior_p_low) and o_eq_low and not bull_a
+    return monster_bull, monster_bear
 
-    hidden_bull = (curr_p > prior_p_low) and (curr_o < prior_o_low)
 
-    # Bearish reversal
-    bear_a = (curr_p > prior_p_high) and (curr_o < prior_o_high)
+def _detect_divergences(
+    price_low:   pd.Series,
+    price_high:  pd.Series,
+    osc:         pd.Series,
+    lb_left:     int,
+    lb_right:    int,
+    range_lower: int,
+    range_upper: int,
+) -> dict:
+    """
+    Pivot-based divergence detection matching the reference PineScript implementation.
 
-    p_dbl_top = abs(curr_p - prior_p_high) / max(abs(prior_p_high), 1e-9) < tolerance
-    bear_b    = p_dbl_top and (curr_o < prior_o_high) and not bear_a
+    Pivots are detected on the oscillator (lbLeft bars lower on left, lbRight on right).
+    The confirmed pivot is lb_right bars before the current bar.
+    The previous pivot must have occurred between range_lower and range_upper bars before
+    the current pivot. Price comparison uses low (bull) and high (bear), not close.
 
-    o_eq_high = abs(curr_o - prior_o_high) < (abs(prior_o_high) * tolerance + 1.0)
-    bear_c    = (curr_p > prior_p_high) and o_eq_high and not bear_a
+    Signals:
+      bullish_divergence:        price lower low  + osc higher low  (reversal)
+      hidden_bullish_divergence: price higher low + osc lower low   (continuation)
+      bearish_divergence:        price higher high + osc lower high (reversal)
+      hidden_bearish_divergence: price lower high + osc higher high (continuation)
+    """
+    NO_DIV = {
+        'bullish_divergence':        False,
+        'hidden_bullish_divergence': False,
+        'bearish_divergence':        False,
+        'hidden_bearish_divergence': False,
+    }
 
-    hidden_bear = (curr_p < prior_p_high) and (curr_o > prior_o_high)
+    min_len = lb_left + lb_right + range_upper + 2
+    if len(osc) < min_len:
+        return NO_DIV
+
+    n     = len(osc)
+    p1    = n - 1 - lb_right   # index of the confirmed current pivot
+
+    def is_pivot_low(idx: int) -> bool:
+        if idx - lb_left < 0 or idx + lb_right >= n:
+            return False
+        v = float(osc.iloc[idx])
+        return (all(v < float(osc.iloc[idx - j]) for j in range(1, lb_left  + 1)) and
+                all(v < float(osc.iloc[idx + j]) for j in range(1, lb_right + 1)))
+
+    def is_pivot_high(idx: int) -> bool:
+        if idx - lb_left < 0 or idx + lb_right >= n:
+            return False
+        v = float(osc.iloc[idx])
+        return (all(v > float(osc.iloc[idx - j]) for j in range(1, lb_left  + 1)) and
+                all(v > float(osc.iloc[idx + j]) for j in range(1, lb_right + 1)))
+
+    def find_prev_pivot(p1_idx: int, pivot_fn) -> int | None:
+        for offset in range(range_lower, range_upper + 1):
+            p0 = p1_idx - offset
+            if p0 < lb_left:
+                break
+            if pivot_fn(p0):
+                return p0
+        return None
+
+    # ── Bullish (pivot lows) ──────────────────────────────────────────────
+    bull_div    = False
+    hidden_bull = False
+    if is_pivot_low(p1):
+        p0 = find_prev_pivot(p1, is_pivot_low)
+        if p0 is not None:
+            osc_p1  = float(osc.iloc[p1]);       osc_p0  = float(osc.iloc[p0])
+            low_p1  = float(price_low.iloc[p1]); low_p0  = float(price_low.iloc[p0])
+            bull_div    = low_p1 < low_p0 and osc_p1 > osc_p0
+            hidden_bull = low_p1 > low_p0 and osc_p1 < osc_p0
+
+    # ── Bearish (pivot highs) ─────────────────────────────────────────────
+    bear_div    = False
+    hidden_bear = False
+    if is_pivot_high(p1):
+        p0 = find_prev_pivot(p1, is_pivot_high)
+        if p0 is not None:
+            osc_p1   = float(osc.iloc[p1]);        osc_p0   = float(osc.iloc[p0])
+            high_p1  = float(price_high.iloc[p1]); high_p0  = float(price_high.iloc[p0])
+            bear_div    = high_p1 > high_p0 and osc_p1 < osc_p0
+            hidden_bear = high_p1 < high_p0 and osc_p1 > osc_p0
 
     return {
-        'bullish_divergence_class_a': bull_a,
-        'bullish_divergence_class_b': bull_b,
-        'bullish_divergence_class_c': bull_c,
-        'hidden_bullish_divergence':  hidden_bull,
-        'bearish_divergence_class_a': bear_a,
-        'bearish_divergence_class_b': bear_b,
-        'bearish_divergence_class_c': bear_c,
-        'hidden_bearish_divergence':  hidden_bear,
-        'any_bullish_divergence':     bull_a or bull_b or bull_c,
-        'any_bearish_divergence':     bear_a or bear_b or bear_c,
-        'strong_bullish_divergence':  bull_a,
-        'strong_bearish_divergence':  bear_a,
+        'bullish_divergence':        bull_div,
+        'hidden_bullish_divergence': hidden_bull,
+        'bearish_divergence':        bear_div,
+        'hidden_bearish_divergence': hidden_bear,
     }
 
 
@@ -109,10 +165,14 @@ def _compression_tracker(df: pd.DataFrame, pivot: pd.Series, atr: pd.Series) -> 
 
 
 def compute(df: pd.DataFrame, params: dict) -> dict:
-    ema_p   = params['ema_period']
-    atr_p   = params['atr_period']
-    smooth  = params['smooth_period']
-    div_lb  = min(int(params.get('divergence_lookback', 20)), 50)
+    ema_p       = params['ema_period']
+    atr_p       = params['atr_period']
+    smooth      = params['smooth_period']
+    me_lb       = int(params.get('monster_eye_lookback', 20))
+    div_lb_l    = int(params.get('div_pivot_left',  3))
+    div_lb_r    = int(params.get('div_pivot_right', 1))
+    div_range_l = int(params.get('div_range_lower', 5))
+    div_range_u = int(params.get('div_range_upper', 60))
 
     close = df['Close']
     high  = df['High']
@@ -143,13 +203,15 @@ def compute(df: pd.DataFrame, params: dict) -> dict:
     dot_bull_curr,  dot_bear_curr  = _dot_states(osc_curr,  osc_prev)
     dot_bull_prev,  dot_bear_prev  = _dot_states(osc_prev,  osc_prev2)
 
-    monster_bull = dot_bull_curr and dot_bull_prev
-    monster_bear = dot_bear_curr and dot_bear_prev
+    monster_bull, monster_bear = _monster_eyes(oscillator, me_lb)
 
     in_comp_curr = bool(tracker[-1])
     in_comp_prev = bool(tracker[-2]) if len(tracker) > 1 else False
 
-    div_results = _detect_divergences(close, oscillator, div_lb)
+    div_results = _detect_divergences(
+        df['Low'], df['High'], oscillator,
+        div_lb_l, div_lb_r, div_range_l, div_range_u,
+    )
 
     return {
         'oscillator':      osc_curr,

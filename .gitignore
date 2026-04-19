@@ -5,6 +5,7 @@ docs/
 # Personal config and presets
 config.py
 presets.py
+output_config.py
 
 # Output files
 output/*.xlsx

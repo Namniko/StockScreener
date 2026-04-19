@@ -3,7 +3,7 @@ from tradingview_screener import Query, And, col
 
 STAGE1_SELECT_ALWAYS = [
     'name', 'close', 'open', 'high', 'low', 'volume',
-    'EMA20', 'EMA50', 'EMA200',   # TV only supports standard periods; Stage 2 computes exact EMAs
+    'EMA8', 'EMA13', 'EMA21', 'EMA50', 'EMA200',  # EMA48 not supported by TV API → proxied to EMA50
     'RSI', 'MACD.macd', 'MACD.signal',
     'market_cap_basic', 'sector', 'average_volume_10d_calc',
     'relative_volume_10d_calc', 'type', 'typespecs',
@@ -11,7 +11,54 @@ STAGE1_SELECT_ALWAYS = [
 ]
 
 
-def build_stage1_query(cfg: dict) -> Query:
+def _apply_prefilter(expressions: list, pf: dict) -> None:
+    """Translate a tv_prefilter dict into tradingview_screener col() expressions."""
+    # EMA48 is not supported by the TV API — proxied to EMA50 (Stage 2 uses exact values)
+    if pf.get('ema21_above_ema48'):
+        expressions.append(col('EMA21') >= col('EMA50'))
+    if pf.get('ema48_above_ema200'):
+        expressions.append(col('EMA50') >= col('EMA200'))
+    if pf.get('ema8_above_ema21'):
+        expressions.append(col('EMA8') >= col('EMA21'))
+    if pf.get('close_above_ema21'):
+        expressions.append(col('close') >= col('EMA21'))
+    if pf.get('close_below_ema21'):
+        expressions.append(col('close') < col('EMA21'))
+    if pf.get('close_above_ema48'):
+        expressions.append(col('close') >= col('EMA50'))
+    if pf.get('close_below_ema48'):
+        expressions.append(col('close') < col('EMA50'))
+    if pf.get('low_below_ema21'):
+        expressions.append(col('low') <= col('EMA21'))
+    if pf.get('low_below_ema8'):
+        expressions.append(col('low') <= col('EMA8'))
+    if pf.get('high_above_ema21'):
+        expressions.append(col('high') >= col('EMA21'))
+    if pf.get('ema8_crossed_above_ema21'):
+        expressions.append(col('EMA8').crosses_above('EMA21'))
+    if pf.get('ema21_crossed_above_ema48'):
+        expressions.append(col('EMA21').crosses_above('EMA50'))
+    if pf.get('ema21_crossed_above_ema200'):
+        expressions.append(col('EMA21').crosses_above('EMA200'))
+    if pf.get('ema21_crossed_below_ema200'):
+        expressions.append(col('EMA21').crosses_below('EMA200'))
+    if pf.get('macd_above_signal'):
+        expressions.append(col('MACD.macd') >= col('MACD.signal'))
+    if pf.get('macd_below_signal'):
+        expressions.append(col('MACD.macd') < col('MACD.signal'))
+    if pf.get('macd_above_zero'):
+        expressions.append(col('MACD.macd') >= 0)
+    if pf.get('macd_below_zero'):
+        expressions.append(col('MACD.macd') < 0)
+    if pf.get('rsi_min') is not None:
+        expressions.append(col('RSI') >= pf['rsi_min'])
+    if pf.get('rsi_max') is not None:
+        expressions.append(col('RSI') <= pf['rsi_max'])
+    if pf.get('min_rel_volume') is not None:
+        expressions.append(col('relative_volume_10d_calc') >= pf['min_rel_volume'])
+
+
+def build_stage1_query(cfg: dict, prefilter: dict | None = None) -> Query:
     expressions = []
 
     if cfg.get('type'):
@@ -34,47 +81,8 @@ def build_stage1_query(cfg: dict) -> Query:
     if cfg.get('exchanges'):
         expressions.append(col('exchange').isin(cfg['exchanges']))
 
-    # TV field mapping: our logical EMAs → nearest TV-supported period
-    # EMA8→EMA10, EMA21→EMA20, EMA48→EMA50 (Stage 2 uses exact yfinance-computed values)
-    nf = cfg.get('native_filters', {})
-    if nf.get('ema21_above_ema48'):
-        expressions.append(col('EMA20') >= col('EMA50'))
-    if nf.get('ema48_above_ema200'):
-        expressions.append(col('EMA50') >= col('EMA200'))
-    if nf.get('ema8_above_ema21'):
-        expressions.append(col('EMA10') >= col('EMA20'))
-    if nf.get('close_above_ema21'):
-        expressions.append(col('close') >= col('EMA20'))
-    if nf.get('close_below_ema21'):
-        expressions.append(col('close') < col('EMA20'))
-    if nf.get('close_above_ema48'):
-        expressions.append(col('close') >= col('EMA50'))
-    if nf.get('close_below_ema48'):
-        expressions.append(col('close') < col('EMA50'))
-    if nf.get('low_below_ema21'):
-        expressions.append(col('low') <= col('EMA20'))
-    if nf.get('low_below_ema8'):
-        expressions.append(col('low') <= col('EMA10'))
-    if nf.get('high_above_ema21'):
-        expressions.append(col('high') >= col('EMA20'))
-    if nf.get('ema8_crossed_above_ema21'):
-        expressions.append(col('EMA10').crosses_above('EMA20'))
-    if nf.get('ema21_crossed_above_ema48'):
-        expressions.append(col('EMA20').crosses_above('EMA50'))
-    if nf.get('ema21_crossed_above_ema200'):
-        expressions.append(col('EMA20').crosses_above('EMA200'))
-    if nf.get('ema21_crossed_below_ema200'):
-        expressions.append(col('EMA20').crosses_below('EMA200'))
-    if nf.get('macd_above_signal'):
-        expressions.append(col('MACD.macd') >= col('MACD.signal'))
-    if nf.get('macd_below_signal'):
-        expressions.append(col('MACD.macd') < col('MACD.signal'))
-    if nf.get('rsi_min') is not None:
-        expressions.append(col('RSI') >= nf['rsi_min'])
-    if nf.get('rsi_max') is not None:
-        expressions.append(col('RSI') <= nf['rsi_max'])
-    if nf.get('min_rel_volume') is not None:
-        expressions.append(col('relative_volume_10d_calc') >= nf['min_rel_volume'])
+    if prefilter:
+        _apply_prefilter(expressions, prefilter)
 
     q = (Query()
          .select(*STAGE1_SELECT_ALWAYS)
@@ -86,7 +94,11 @@ def build_stage1_query(cfg: dict) -> Query:
         indexes = cfg['index'] if isinstance(cfg['index'], list) else [cfg['index']]
         q = q.set_index(*indexes)
     else:
-        q = q.set_markets(cfg.get('market', 'america'))
+        market = cfg.get('market', 'america')
+        if isinstance(market, list):
+            q = q.set_markets(*market)
+        else:
+            q = q.set_markets(market)
 
     if expressions:
         q = q.where2(And(*expressions))
@@ -94,8 +106,8 @@ def build_stage1_query(cfg: dict) -> Query:
     return q
 
 
-def run_tv_screener(cfg: dict, cookies: dict | None = None) -> tuple[list[str], pd.DataFrame]:
-    q = build_stage1_query(cfg)
+def run_tv_screener(cfg: dict, prefilter: dict | None = None, cookies: dict | None = None) -> tuple[list[str], pd.DataFrame]:
+    q = build_stage1_query(cfg, prefilter=prefilter)
     kwargs = {'cookies': cookies} if cookies else {}
     total, df = q.get_scanner_data(**kwargs)
     print(f'  Stage 1: {total} total matches, returning top {len(df)}')

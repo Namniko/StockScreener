@@ -5,13 +5,13 @@ A two-stage US stock screener that combines TradingView's server-side scan API w
 ## How It Works
 
 ### Stage 1 — TradingView Broad Filter
-Uses the [TradingView Screener](https://github.com/shner-elmo/TradingView-Screener) Python package to query TradingView's scan API. Applies fundamental and native indicator filters server-side to narrow ~8,000 US equities down to a short list of candidates. All filter parameters are defined in `config.py`.
+Uses the [TradingView Screener](https://github.com/shner-elmo/TradingView-Screener) Python package to query TradingView's scan API. Applies broad fundamental filters server-side (market cap, price, volume, sector, type) to narrow ~19,000 US equities to a short candidate list. Followed automatically by a signal-specific native TV prefilter pass derived from the active scan's subconditions.
 
 ### Stage 2 — Local Indicator Computation
 Fetches daily OHLC history for each candidate via `yfinance`, then computes custom indicators locally. Raw indicator values are evaluated against named subconditions defined in `config.py`. Subconditions are composed into scan expressions using `+` (AND) and `|` (OR) logic.
 
 ### Output
-Results are ranked and printed to the console. Optionally saved to `.xlsx`.
+Results are ranked and printed to the console and automatically saved to a timestamped `.xlsx` file in the `output/` directory (`stockscreener_result_YYYYMMDD_HHMM.xlsx`). Pass `--output path/to/file.xlsx` to override the path.
 
 ---
 
@@ -89,6 +89,7 @@ pip install tradingview-screener yfinance pandas numpy openpyxl python-dotenv
 # Copy example configs to personal versions (gitignored)
 cp config.example.py config.py
 cp presets.example.py presets.py
+cp output_config.example.py output_config.py
 ```
 
 ### Optional: Real-Time TradingView Data
@@ -169,33 +170,57 @@ Presets and subconditions can be freely mixed in the same expression.
 
 ---
 
+## Screening Pipeline
+
+Each scan runs three passes in sequence:
+
+1. **Stage 1 — broad filter** (`STAGE1` in `config.py`): TradingView server-side query filtering the full market (~19k US equities) by fundamental criteria — market cap, price, volume, sector, exchange, instrument type. Returns up to `max_results` candidates.
+
+2. **Signal prefilter** (automatic, derived from the scan): Signal-specific native TV filters are collected from `tv_prefilter` keys on the active subconditions and applied as a second server-side pass. For example, scanning `saty_ribbon.pullback_buy` automatically adds `EMA21 > EMA50` and `close > EMA21` filters. No manual configuration needed — they follow the scan.
+
+3. **Stage 2 — local computation**: yfinance OHLC history is fetched for the remaining candidates. Custom indicators are computed locally and evaluated against subcondition thresholds.
+
+---
+
 ## Configuration
 
 ### `config.py` — Stage 1 Filters
 
-Controls the TradingView broad filter: market universe, instrument type, fundamental minimums, and native indicator filters applied server-side before Stage 2.
+Broad, scan-agnostic filters applied to the full market on every run. For the full list of valid values for each setting, see `config.example.py`.
 
 Key settings:
 
 ```python
 STAGE1 = {
-    'min_market_cap':  1_000_000_000,  # $1B minimum
-    'min_price':       5.0,
-    'min_avg_volume':  500_000,        # 10-day average volume
+    'market':          'america',      # string or list — see config.example.py for all markets
+    'index':           None,           # e.g. 'SYML:SP;SPX' — overrides market when set
+    'type':            'stock',        # 'stock', 'fund', 'dr', or None
+    'typespecs':       ['common'],     # ['common'], ['etf'], ['reit'], etc.
+    'min_market_cap':  1_000_000_000,  # raw USD  e.g. 1_000_000_000 = $1B
+    'min_price':       5.0,            # USD per share
+    'min_avg_volume':  500_000,        # shares (10-day average)
     'max_results':     200,            # candidates passed to Stage 2
-    'history_days':    300,            # OHLC bars fetched (300+ needed for EMA200)
-    'native_filters': {
-        'ema21_above_ema48':  True,    # maps to EMA20 >= EMA50 in TV API
-        'close_above_ema21':  True,
-        'low_below_ema21':    True,
-        # ... etc
-    }
+    'history_days':    300,            # OHLC bars to fetch (300+ needed for EMA200)
 }
 ```
 
-### `config.py` — Subconditions
+### `config.py` — Subconditions and `tv_prefilter`
 
-Each indicator entry defines named subconditions as dicts of `field: threshold` pairs. Threshold suffixes control the comparison operator:
+Each subcondition is a dict of `field: threshold` pairs evaluated against Stage 2 indicator output. An optional `tv_prefilter` key on a subcondition declares which native TV filters should be applied server-side when that subcondition is part of the active scan:
+
+```python
+'pullback_buy': {
+    'tags': ['bullish', 'entry'],
+    'tv_prefilter': {'ema21_above_ema48': True, 'close_above_ema21': True},  # applied in pass 2
+    'close_above_ema21': True,   # evaluated in Stage 2
+    'low_touched_ema21': True,
+    'ema21_above_ema48': True,
+},
+```
+
+For OR expressions, a `tv_prefilter` key is only applied if all branches of the OR agree on its value — so it never over-filters. For the full list of supported `tv_prefilter` keys, see `config.example.py`.
+
+Threshold suffixes control the comparison operator:
 
 | Suffix | Operator | Example |
 |---|---|---|
@@ -218,6 +243,24 @@ PRESETS = {
     # ...
 }
 ```
+
+### `output_config.py` — XLSX Column Selection
+
+Controls which columns appear in the XLSX export and what they're named. Two sections:
+
+**`COLUMNS`** — ordered list of alias names to include. Add or remove entries to control what appears in the spreadsheet. Fields used by a matched subcondition are always appended automatically even if omitted here.
+
+**`ALIASES`** — maps alias names to data sources. Three source types:
+
+| Source format | Example | Meaning |
+|---|---|---|
+| Built-in | `'ticker'`, `'scan'`, `'date_run'` | Screener metadata |
+| `tv.<field>` | `'tv.market_cap_basic'` | Stage 1 TradingView field |
+| `indicator.field` | `'saty_ribbon.ema21'` | Stage 2 computed indicator value |
+
+Available `tv.*` fields: `close`, `open`, `high`, `low`, `volume`, `market_cap_basic`, `sector`, `exchange`, `average_volume_10d_calc`, `relative_volume_10d_calc`, `RSI`, `MACD.macd`, `MACD.signal`, `EMA8`, `EMA21`, `EMA50`, `EMA200`.
+
+For all indicator fields, see `output_config.example.py`.
 
 ---
 
@@ -249,7 +292,7 @@ A subcondition can carry multiple type tags (e.g. `[bullish, breakout, entry]`).
 ## Adding a New Indicator
 
 1. Create `stage2/new_indicator.py` — implement `compute(df, params) -> dict`, return raw values only.
-2. Add an entry to `INDICATORS` in `config.py` with `module`, `params`, `output_fields`, and `subconditions`. Include a `tags` list on each subcondition.
+2. Add an entry to `INDICATORS` in `config.py` with `module`, `params`, `output_fields`, and `subconditions`. Each subcondition should include a `tags` list and optionally a `tv_prefilter` dict for any conditions that map to native TV fields.
 3. Register it in `stage2/__init__.py` under `INDICATOR_MODULES`.
 4. Optionally reference it in `presets.py`.
 

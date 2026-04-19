@@ -129,3 +129,30 @@ def get_required_indicators(expr: str, presets: dict, indicators: dict) -> set[s
 
     _walk(ast)
     return required
+
+
+def get_required_tv_prefilters(expr: str, presets: dict, indicators: dict) -> dict:
+    """
+    Collect tv_prefilter hints from all leaf subconditions in the expression.
+    Only returns filter keys where every subcondition that declares an opinion
+    agrees on the same value — safe for OR expressions (never over-filters).
+    """
+    ast = parse_expression(expr, presets, indicators)
+    opinions: dict[str, list] = {}  # key -> list of values from subconditions that have it
+
+    def _walk(node):
+        if node[0] in ('and', 'or'):
+            _walk(node[1])
+            _walk(node[2])
+        elif node[0] == 'atom':
+            name = node[1]
+            if '.' not in name:
+                return
+            ind_name, sub_name = name.split('.', 1)
+            sub_cfg = indicators.get(ind_name, {}).get('subconditions', {}).get(sub_name, {})
+            for key, val in sub_cfg.get('tv_prefilter', {}).items():
+                opinions.setdefault(key, []).append(val)
+
+    _walk(ast)
+    # Only apply a filter if all opinions agree
+    return {k: vals[0] for k, vals in opinions.items() if len(set(vals)) == 1}

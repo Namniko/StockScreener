@@ -37,6 +37,7 @@ def build_result(
     matched: bool,
     indicators: dict,
     presets: dict,
+    tv_data: dict | None = None,
 ) -> ScreenerResult:
     matched_subs = []
     for ind_name, ind_cfg in indicators.items():
@@ -55,6 +56,7 @@ def build_result(
         matched_subconditions=matched_subs,
         in_sync=in_sync,
         sync_note=sync_note,
+        tv_data=tv_data or {},
     )
 
 

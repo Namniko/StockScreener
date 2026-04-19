@@ -1,46 +1,95 @@
 STAGE1 = {
     # ── Universe ────────────────────────────────────────────
+    # market: string (single) or list of strings (multi-market scan)
+    # Example: 'america'  |  ['america', 'canada']
+    # Valid values —
+    #   Equity:     america, uk, germany, france, italy, spain, netherlands,
+    #               switzerland, sweden, norway, denmark, finland, belgium, austria,
+    #               portugal, poland, hungary, czech, romania, turkey, russia,
+    #               india, china, japan, hongkong, taiwan, korea, singapore,
+    #               australia, newzealand, canada, brazil, mexico, argentina, chile,
+    #               colombia, peru, nigeria, egypt, kenya, uae, israel, qatar,
+    #               kuwait, bahrain, rsa, ksa, indonesia, malaysia, thailand,
+    #               vietnam, philippines, pakistan, bangladesh, srilanka
+    #   Non-equity: crypto, forex, futures, bonds, cfd, coin
+    #               (EMA/fundamental filters do not apply to non-equity markets)
     'market': 'america',
+    # index: string or list of strings. Scopes the scan to a specific index.
+    #   Overrides 'market' — when set, market is ignored.
+    #   Format: 'SYML:{source};{symbol}'
+    # Example: 'SYML:SP;SPX'  |  ['SYML:SP;SPX', 'SYML:SP;MID']
+    # Verified working values —
+    #   US:            SYML:SP;SPX       (S&P 500, ~503)
+    #                  SYML:SP;MID       (S&P 400 MidCap, ~399)
+    #                  SYML:NASDAQ;NDX   (Nasdaq 100)
+    #                  SYML:DJ;DJI       (Dow Jones 30)
+    #   International: SYML:TVC;UKX      (FTSE 100)
+    #                  SYML:TVC;NI225    (Nikkei 225)
+    #                  SYML:NSE;NIFTY    (Nifty 50)
+    #                  SYML:TSX;TX60     (TSX 60)
+    #                  SYML:XETR;DAX     (DAX 40)
+    #                  SYML:ASX;XJO      (ASX 200)
+    #                  SYML:KRX;KOSPI    (KOSPI)
+    #   Other indices follow the same SYML:{source};{symbol} pattern.
+    #   Russell 2000 and S&P 600 are not accessible via this API.
     'index': None,
 
     # ── Instrument type ──────────────────────────────────────
+    # type: string or None. Filters by instrument category.
+    # Example: 'stock'  |  'fund'  |  None (no filter)
+    # Valid values (america market) —
+    #   'stock'   common stocks, preferred shares, ADRs  (~11k)
+    #   'fund'    ETFs, REITs, trusts, closed-end funds  (~6k)
+    #   'dr'      depositary receipts                    (~1.5k)
+    #   None      no filter (all instrument types)
     'type': 'stock',
+    # typespecs: list of strings or None. Narrows within the type category.
+    #   Used with col('typespecs').has([...]) — matches if instrument has ALL listed specs.
+    # Example: ['common']  |  ['etf']  |  None (no filter)
+    # Valid values —
+    #   For type='stock':  'common', 'preferred'
+    #   For type='fund':   'etf', 'reit', 'trust', 'unit', 'mutual'
+    #   For type='dr':     typespecs is typically empty — set to None
     'typespecs': ['common'],
 
     # ── Fundamental filters ──────────────────────────────────
-    'min_market_cap':    1_000_000_000,
-    'max_market_cap':    None,
-    'min_price':         5.0,
-    'max_price':         None,
-    'min_avg_volume':    500_000,
-    'min_rel_volume':    None,
-    'sectors':           None,
-    'exchanges':         None,
+    # All numeric filters: None = disabled.
+    'min_market_cap':    1_000_000_000,   # raw USD   e.g. 1_000_000_000 = $1B
+    'max_market_cap':    None,            # raw USD
+    'min_price':         5.0,             # USD per share
+    'max_price':         None,            # USD per share
+    'min_avg_volume':    500_000,         # shares  (10-day average)
+    'min_rel_volume':    None,            # ratio   e.g. 1.5 = 50% above average
+    # sectors: list of strings or None. Filters by TradingView sector classification.
+    # Example: ['Technology Services', 'Electronic Technology']  |  None (all sectors)
+    # Valid values —
+    #   'Commercial Services', 'Communications', 'Consumer Durables',
+    #   'Consumer Non-Durables', 'Consumer Services', 'Distribution Services',
+    #   'Electronic Technology', 'Energy Minerals', 'Finance',
+    #   'Health Services', 'Health Technology', 'Industrial Services',
+    #   'Miscellaneous', 'Non-Energy Minerals', 'Process Industries',
+    #   'Producer Manufacturing', 'Retail Trade', 'Technology Services',
+    #   'Transportation', 'Utilities'
+    'sectors': None,
+    # exchanges: list of strings or None. Filters by listing exchange.
+    # Example: ['NASDAQ', 'NYSE']  |  None (all exchanges)
+    # Valid values (america market): 'NASDAQ', 'NYSE', 'AMEX', 'OTC'
+    'exchanges': None,
 
-    # ── Native TV indicator filters ──────────────────────────
-    'native_filters': {
-        'ema21_above_ema48':    True,
-        'ema48_above_ema200':   True,
-        'ema8_above_ema21':     None,
-        'close_above_ema21':    True,
-        'close_below_ema21':    None,
-        'close_above_ema48':    None,
-        'close_below_ema48':    None,
-        'low_below_ema21':      True,
-        'low_below_ema8':       None,
-        'high_above_ema21':     None,
-        'ema8_crossed_above_ema21':    None,
-        'ema21_crossed_above_ema48':   None,
-        'ema21_crossed_above_ema200':  None,
-        'ema21_crossed_below_ema200':  None,
-        'rsi_min':              None,
-        'rsi_max':              None,
-        'macd_above_signal':    None,
-        'macd_below_signal':    None,
-        'min_rel_volume':       None,
-    },
 
     # ── Query settings ───────────────────────────────────────
+    # sort_by: string. Field to sort Stage 1 results by before applying max_results cap.
+    # Example: 'market_cap_basic'  |  'relative_volume_10d_calc'  |  'Perf.W'
+    # Useful values —
+    #   Size/liquidity:  'market_cap_basic', 'volume', 'average_volume_10d_calc',
+    #                    'relative_volume_10d_calc', 'float_shares_outstanding'
+    #   Price/momentum:  'close', 'change', 'change_abs',
+    #                    'Perf.W', 'Perf.1M', 'Perf.3M', 'Perf.6M', 'Perf.Y', 'Perf.YTD'
+    #   Technicals:      'RSI', 'ATR'
+    #   Fundamentals:    'price_earnings_ttm', 'price_sales_ratio', 'return_on_equity',
+    #                    'debt_to_equity', 'earnings_per_share_basic_ttm',
+    #                    'dividends_yield_current', 'beta_1_year'
+    # sort_asc: bool. True = ascending (smallest first), False = descending (largest first).
     'sort_by':       'market_cap_basic',
     'sort_asc':      False,
     'max_results':   200,
@@ -91,8 +140,11 @@ INDICATORS = {
             'prev_close_above_ema48',
         ],
         'subconditions': {
+
+            # ── Bullish trend states (strongest → weakest) ───────
             'max_bull': {
                 'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'ema48_above_ema200': True, 'close_above_ema21': True},
                 'ema8_above_ema13':   True,
                 'ema13_above_ema21':  True,
                 'ema21_above_ema48':  True,
@@ -101,19 +153,60 @@ INDICATORS = {
             },
             'strong_bull': {
                 'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'ema48_above_ema200': True, 'close_above_ema21': True},
                 'ema8_above_ema21':   True,
                 'ema21_above_ema48':  True,
                 'ema48_above_ema200': True,
                 'close_above_ema21':  True,
             },
+            'moderate_bull': {
+                'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'ema48_above_ema200': True, 'close_above_ema21': True},
+                'ema21_above_ema48':  True,
+                'ema48_above_ema200': True,
+                'close_above_ema21':  True,
+            },
+            'weak_bull': {
+                'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'ema48_above_ema200': True, 'close_above_ema21': True},
+                'ema21_above_ema48':   True,
+                'ema48_above_ema200':  True,
+                'close_above_ema21':   True,
+                'ema8_slope_positive': False,
+            },
+            'bullish_bias': {
+                'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'close_above_ema21': True},
+                'close_above_ema21':  True,
+            },
+
+            # ── Bullish pullback entries (strongest → weakest) ───
+            'pullback_buy_ema8': {
+                'tags': ['bullish', 'entry'],
+                'tv_prefilter': {'ema8_above_ema21': True, 'ema21_above_ema48': True, 'close_above_ema21': True, 'low_below_ema8': True},
+                'close_above_ema8':   True,
+                'low_touched_ema8':   True,
+                'ema8_above_ema21':   True,
+                'ema21_above_ema48':  True,
+            },
+            'pullback_buy_ema13': {
+                'tags': ['bullish', 'entry'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'close_above_ema21': True},
+                'close_above_ema13':  True,
+                'low_touched_ema13':  True,
+                'ema13_above_ema21':  True,
+                'ema21_above_ema48':  True,
+            },
             'pullback_buy': {
                 'tags': ['bullish', 'entry'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'close_above_ema21': True, 'low_below_ema21': True},
                 'close_above_ema21':  True,
                 'low_touched_ema21':  True,
                 'ema21_above_ema48':  True,
             },
             'pullback_buy_strong': {
                 'tags': ['bullish', 'entry'],
+                'tv_prefilter': {'ema21_above_ema48': True, 'ema48_above_ema200': True, 'close_above_ema21': True, 'low_below_ema21': True},
                 'close_above_ema21':  True,
                 'low_touched_ema21':  True,
                 'ema8_above_ema13':   True,
@@ -121,48 +214,110 @@ INDICATORS = {
                 'ema21_above_ema48':  True,
                 'ema48_above_ema200': True,
             },
-            'pullback_buy_ema8': {
-                'tags': ['bullish', 'entry'],
-                'close_above_ema8':   True,
-                'low_touched_ema8':   True,
-                'ema8_above_ema21':   True,
-                'ema21_above_ema48':  True,
-            },
-            'bullish_bias': {
-                'tags': ['bullish', 'trend'],
-                'close_above_ema21':  True,
-            },
+
+            # ── Bearish trend states (strongest → weakest) ───────
             'max_bear': {
                 'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'close_below_ema21': True},
                 'ema8_above_ema13':   False,
                 'ema13_above_ema21':  False,
                 'ema21_above_ema48':  False,
                 'ema48_above_ema200': False,
                 'close_above_ema8':   False,
             },
+            'strong_bear': {
+                'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'ema8_above_ema21':   False,
+                'ema21_above_ema48':  False,
+                'ema48_above_ema200': False,
+                'close_above_ema21':  False,
+            },
+            'moderate_bear': {
+                'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'ema21_above_ema48':  False,
+                'ema48_above_ema200': False,
+                'close_above_ema21':  False,
+            },
+            'weak_bear': {
+                'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'ema21_above_ema48':   False,
+                'ema48_above_ema200':  False,
+                'close_above_ema21':   False,
+                'ema8_slope_positive': True,
+            },
+            'bearish_bias': {
+                'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'close_above_ema21':  False,
+            },
+
+            # ── Bearish pullback entries (strongest → weakest) ───
+            'pullback_short_ema8': {
+                'tags': ['bearish', 'entry'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'close_above_ema8':   False,
+                'high_touched_ema8':  True,
+                'ema8_above_ema21':   False,
+                'ema21_above_ema48':  False,
+            },
+            'pullback_short_ema13': {
+                'tags': ['bearish', 'entry'],
+                'tv_prefilter': {'close_below_ema21': True},
+                'close_above_ema13':  False,
+                'high_touched_ema13': True,
+                'ema13_above_ema21':  False,
+                'ema21_above_ema48':  False,
+            },
             'pullback_short': {
                 'tags': ['bearish', 'entry'],
+                'tv_prefilter': {'close_below_ema21': True, 'high_above_ema21': True},
                 'close_above_ema21':  False,
                 'high_touched_ema21': True,
                 'ema21_above_ema48':  False,
             },
-            'bearish_bias': {
-                'tags': ['bearish', 'trend'],
-                'close_above_ema21':  False,
-            },
+
+            # ── Reversal signals ─────────────────────────────────
             'vomy_warning': {
-                'tags': ['neutral', 'exit'],
-                'ema8_above_ema13':      True,
-                'ema8_slope_positive':   False,
-                'ema8_ema13_gap_pct':    0.5,
+                'tags': ['neutral', 'reversal'],
+                'tv_prefilter': {'close_above_ema21': True},
+                'ema8_above_ema13':          True,
+                'ema8_slope_positive':        False,
+                'ema8_ema13_gap_pct__lte':   0.5,
+            },
+            'violent_reversal_down': {
+                'tags': ['bearish', 'reversal'],
+                'tv_prefilter': {'close_below_ema48': True},
+                'prev_close_above_ema48': True,
+                'close_above_ema48':      False,
+                'ema21_above_ema48':      True,
+            },
+            'violent_reversal_up': {
+                'tags': ['bullish', 'reversal'],
+                'tv_prefilter': {'close_above_ema48': True},
+                'prev_close_above_ema48': False,
+                'close_above_ema48':      True,
+                'ema21_above_ema48':      False,
             },
             'golden_cross': {
                 'tags': ['bullish', 'reversal'],
+                'tv_prefilter': {'ema21_crossed_above_ema200': True},
                 'ema21_crossed_above_ema200_recently': True,
             },
             'death_cross': {
                 'tags': ['bearish', 'reversal'],
+                'tv_prefilter': {'ema21_crossed_below_ema200': True},
                 'ema21_crossed_below_ema200_recently': True,
+            },
+
+            # ── 200 EMA watch ────────────────────────────────────
+            'ema200_watch': {
+                'tags': ['neutral', 'trend'],
+                'tv_prefilter': {'ema48_above_ema200': True},
+                'ema48_above_ema200':         True,
+                'ema48_ema200_gap_pct__lte':  2.0,
             },
         }
     },
@@ -224,27 +379,37 @@ INDICATORS = {
             },
             'confirmed_bull': {
                 'tags': ['bullish', 'entry', 'breakout'],
-                'first_green_dot':     True,
-                'momentum_above_zero': True,
-                'atr_distance__lte':   1.0,
+                'first_green_dot':   True,
+                'momentum_color':    ['Aqua'],
+                'atr_distance__lte': 1.0,
             },
             'confirmed_bear': {
                 'tags': ['bearish', 'entry', 'breakout'],
-                'first_green_dot':     True,
-                'momentum_above_zero': False,
-                'atr_distance__lte':   1.0,
+                'first_green_dot':   True,
+                'momentum_color':    ['Red'],
+                'atr_distance__lte': 1.0,
             },
             'late_bull': {
                 'tags': ['bullish', 'breakout'],
-                'first_green_dot':     True,
-                'momentum_above_zero': True,
-                'atr_distance__gt':    1.0,
+                'first_green_dot':  True,
+                'momentum_color':   ['Aqua'],
+                'atr_distance__gt': 1.0,
             },
             'late_bear': {
                 'tags': ['bearish', 'breakout'],
-                'first_green_dot':     True,
-                'momentum_above_zero': False,
-                'atr_distance__gt':    1.0,
+                'first_green_dot':  True,
+                'momentum_color':   ['Red'],
+                'atr_distance__gt': 1.0,
+            },
+            'exit_warning_long': {
+                'tags': ['neutral', 'exit'],
+                'momentum_color':      ['Blue'],
+                'prev_momentum_color': ['Aqua'],
+            },
+            'exit_warning_short': {
+                'tags': ['neutral', 'exit'],
+                'momentum_color':      ['Yellow'],
+                'prev_momentum_color': ['Red'],
             },
             'exit_long': {
                 'tags': ['neutral', 'exit'],
@@ -300,19 +465,23 @@ INDICATORS = {
         'subconditions': {
             'signal_crossover_bull': {
                 'tags': ['bullish', 'entry', 'momentum'],
+                'tv_prefilter': {'macd_above_signal': True},
                 'macd_crossed_above_signal': True,
             },
             'signal_crossover_bear': {
                 'tags': ['bearish', 'entry', 'momentum'],
+                'tv_prefilter': {'macd_below_signal': True},
                 'macd_crossed_below_signal': True,
             },
             'signal_crossover_bull_above_zero': {
                 'tags': ['bullish', 'entry', 'momentum'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'macd_crossed_above_signal': True,
                 'macd_above_zero':           True,
             },
             'signal_crossover_bear_below_zero': {
                 'tags': ['bearish', 'entry', 'momentum'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'macd_crossed_below_signal': True,
                 'macd_below_zero':           True,
             },
@@ -326,36 +495,44 @@ INDICATORS = {
             },
             'bullish_trend': {
                 'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'macd_above_zero':   True,
                 'macd_above_signal': True,
             },
             'bearish_trend': {
                 'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'macd_below_zero':   True,
                 'macd_below_signal': True,
             },
             'bullish_bias': {
                 'tags': ['bullish', 'trend'],
+                'tv_prefilter': {'macd_above_zero': True},
                 'macd_above_zero': True,
             },
             'bearish_bias': {
                 'tags': ['bearish', 'trend'],
+                'tv_prefilter': {'macd_below_zero': True},
                 'macd_below_zero': True,
             },
             'histogram_bull_expanding': {
                 'tags': ['bullish', 'momentum'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'histogram_above_zero_rising': True,
             },
             'histogram_bear_expanding': {
                 'tags': ['bearish', 'momentum'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'histogram_below_zero_falling': True,
             },
             'histogram_bull_fading': {
                 'tags': ['neutral', 'exit'],
+                'tv_prefilter': {'macd_above_signal': True},
                 'histogram_above_zero_falling': True,
             },
             'histogram_bear_fading': {
                 'tags': ['neutral', 'exit'],
+                'tv_prefilter': {'macd_below_signal': True},
                 'histogram_below_zero_rising': True,
             },
             'bullish_divergence': {
@@ -368,43 +545,51 @@ INDICATORS = {
             },
             'bullish_divergence_confirmed': {
                 'tags': ['bullish', 'divergence', 'reversal', 'entry'],
+                'tv_prefilter': {'macd_above_signal': True},
                 'bullish_divergence':        True,
                 'macd_crossed_above_signal': True,
             },
             'bearish_divergence_confirmed': {
                 'tags': ['bearish', 'divergence', 'reversal', 'entry'],
+                'tv_prefilter': {'macd_below_signal': True},
                 'bearish_divergence':        True,
                 'macd_crossed_below_signal': True,
             },
             'stretched_bull': {
                 'tags': ['neutral', 'exit', 'extreme'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'histogram_positive':       True,
                 'macd_signal_gap_pct__gte': 0.5,
             },
             'stretched_bear': {
                 'tags': ['neutral', 'exit', 'extreme'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'histogram_negative':       True,
                 'macd_signal_gap_pct__gte': 0.5,
             },
             'strong_bull': {
                 'tags': ['bullish', 'trend', 'momentum'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'macd_above_zero':             True,
                 'macd_above_signal':           True,
                 'histogram_above_zero_rising': True,
             },
             'strong_bear': {
                 'tags': ['bearish', 'trend', 'momentum'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'macd_below_zero':              True,
                 'macd_below_signal':            True,
                 'histogram_below_zero_falling': True,
             },
             'pullback_buy_setup': {
                 'tags': ['bullish', 'entry'],
+                'tv_prefilter': {'macd_above_signal': True, 'macd_above_zero': True},
                 'macd_above_zero':              True,
                 'histogram_above_zero_falling': True,
             },
             'pullback_short_setup': {
                 'tags': ['bearish', 'entry'],
+                'tv_prefilter': {'macd_below_signal': True, 'macd_below_zero': True},
                 'macd_below_zero':             True,
                 'histogram_below_zero_rising': True,
             },
@@ -572,10 +757,14 @@ INDICATORS = {
     'saty_phase_oscillator': {
         'module': 'stage2.saty_phase_oscillator',
         'params': {
-            'ema_period':          21,
-            'atr_period':          14,
-            'smooth_period':       3,
-            'divergence_lookback': 20,
+            'ema_period':           21,
+            'atr_period':           14,
+            'smooth_period':        3,
+            'monster_eye_lookback': 20,
+            'div_pivot_left':       3,    # bars to the left of pivot to confirm
+            'div_pivot_right':      1,    # bars to the right of pivot to confirm
+            'div_range_lower':      5,    # min bars between two pivots
+            'div_range_upper':      60,   # max bars between two pivots
         },
         'output_fields': [
             'oscillator', 'prev_oscillator', 'raw_signal', 'pivot', 'atr',
@@ -592,12 +781,8 @@ INDICATORS = {
             'monster_eye_bull', 'monster_eye_bear',
             'oscillator_rising', 'oscillator_falling',
             'in_compression', 'compression_just_ended',
-            'bullish_divergence_class_a', 'bullish_divergence_class_b',
-            'bullish_divergence_class_c', 'hidden_bullish_divergence',
-            'bearish_divergence_class_a', 'bearish_divergence_class_b',
-            'bearish_divergence_class_c', 'hidden_bearish_divergence',
-            'any_bullish_divergence', 'any_bearish_divergence',
-            'strong_bullish_divergence', 'strong_bearish_divergence',
+            'bullish_divergence', 'hidden_bullish_divergence',
+            'bearish_divergence', 'hidden_bearish_divergence',
         ],
         'subconditions': {
             'in_accumulation': {
@@ -679,13 +864,13 @@ INDICATORS = {
             },
             'monster_eye_bull_divergence': {
                 'tags': ['bullish', 'reversal', 'divergence'],
-                'monster_eye_bull':           True,
-                'bullish_divergence_class_a': True,
+                'monster_eye_bull':    True,
+                'bullish_divergence':  True,
             },
             'monster_eye_bear_divergence': {
                 'tags': ['bearish', 'reversal', 'divergence'],
-                'monster_eye_bear':           True,
-                'bearish_divergence_class_a': True,
+                'monster_eye_bear':    True,
+                'bearish_divergence':  True,
             },
             'compression': {
                 'tags': ['neutral', 'compression'],
@@ -723,41 +908,33 @@ INDICATORS = {
                 'tags': ['bearish', 'entry', 'momentum'],
                 'crossed_below_zero': True,
             },
-            'bullish_divergence_strong': {
+            'bullish_divergence': {
                 'tags': ['bullish', 'divergence', 'reversal'],
-                'bullish_divergence_class_a': True,
-            },
-            'bullish_divergence_any': {
-                'tags': ['bullish', 'divergence'],
-                'any_bullish_divergence': True,
+                'bullish_divergence': True,
             },
             'bullish_divergence_confirmed': {
                 'tags': ['bullish', 'divergence', 'reversal', 'entry'],
-                'bullish_divergence_class_a': True,
-                'leaving_accumulation':       True,
+                'bullish_divergence':    True,
+                'leaving_accumulation': True,
             },
             'bullish_divergence_extreme_confirmed': {
                 'tags': ['bullish', 'divergence', 'reversal', 'entry'],
-                'bullish_divergence_class_a': True,
-                'leaving_extreme_down':       True,
+                'bullish_divergence':    True,
+                'leaving_extreme_down': True,
             },
             'hidden_bull_continuation': {
                 'tags': ['bullish', 'divergence', 'continuation'],
                 'hidden_bullish_divergence': True,
                 'above_zero':                True,
             },
-            'bearish_divergence_strong': {
+            'bearish_divergence': {
                 'tags': ['bearish', 'divergence', 'reversal'],
-                'bearish_divergence_class_a': True,
-            },
-            'bearish_divergence_any': {
-                'tags': ['bearish', 'divergence'],
-                'any_bearish_divergence': True,
+                'bearish_divergence': True,
             },
             'bearish_divergence_confirmed': {
                 'tags': ['bearish', 'divergence', 'reversal', 'entry'],
-                'bearish_divergence_class_a': True,
-                'leaving_distribution':       True,
+                'bearish_divergence':    True,
+                'leaving_distribution': True,
             },
             'hidden_bear_continuation': {
                 'tags': ['bearish', 'divergence', 'continuation'],

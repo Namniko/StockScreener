@@ -1,30 +1,56 @@
 import datetime
 from models.results import ScreenerResult
 
+BUILTIN_SOURCES = {'ticker', 'scan', 'matched_subconditions', 'in_sync', 'sync_note', 'date_run'}
+_SUFFIX_OPS = ('__gte', '__lte', '__gt', '__lt', '__in')
+
 
 def _fmt_float(v) -> str:
     if v is None or (isinstance(v, float) and v != v):
         return 'N/A'
-    return f'{v:.2f}'
+    return f'{v:.4f}'
 
 
-def _ema_stack_str(r: dict) -> str:
-    parts = []
-    labels = [('ema8', 8), ('ema13', 13), ('ema21', 21), ('ema48', 48), ('ema200', 200)]
-    prev_v = None
-    for key, span in labels:
-        v = r.get(key)
-        if v is None:
-            parts.append(f'{span}(?)')
+def _resolve_value(source: str, r: ScreenerResult, scan: str, date_run: str):
+    if source == 'ticker':                  return r.ticker
+    if source == 'scan':                    return scan
+    if source == 'matched_subconditions':   return ', '.join(r.matched_subconditions)
+    if source == 'in_sync':                 return r.in_sync
+    if source == 'sync_note':               return r.sync_note
+    if source == 'date_run':                return date_run
+    if '.' in source:
+        ns, field = source.split('.', 1)
+        if ns == 'tv':
+            return r.tv_data.get(field)
+        return r.raw_outputs.get(ns, {}).get(field)
+    return None
+
+
+def _required_filter_fields(r: ScreenerResult, indicators: dict) -> dict:
+    """
+    Returns {source_string: auto_alias} for every field used in the matched
+    subconditions that must appear in output regardless of user config.
+    """
+    required = {}
+    for sub_ref in r.matched_subconditions:
+        if '.' not in sub_ref:
             continue
-        label = f'{span}({_fmt_float(v)})'
-        if prev_v is not None:
-            sep = ' > ' if prev_v >= v else ' < '
-        else:
-            sep = ''
-        parts.append(sep + label if sep else label)
-        prev_v = v
-    return ''.join(parts)
+        ind_name, sub_name = sub_ref.split('.', 1)
+        sub_def = (indicators.get(ind_name, {})
+                             .get('subconditions', {})
+                             .get(sub_name, {}))
+        for key in sub_def:
+            if key in ('tags', 'tv_prefilter'):
+                continue
+            field = key
+            for suffix in _SUFFIX_OPS:
+                if key.endswith(suffix):
+                    field = key[:-len(suffix)]
+                    break
+            source = f'{ind_name}.{field}'
+            if source not in required:
+                required[source] = f'{ind_name}.{field}'
+    return required
 
 
 def print_results(results: list[ScreenerResult], scan: str = '') -> None:
@@ -37,56 +63,28 @@ def print_results(results: list[ScreenerResult], scan: str = '') -> None:
     print(f'{"=" * 60}')
 
     for r in results:
-        ribbon  = r.raw_outputs.get('saty_ribbon', {})
-        squeeze = r.raw_outputs.get('ttm_squeeze', {})
         sync_mark = 'Y' if r.in_sync else 'N'
-
         print(f'\nTICKER: {r.ticker}  |  IN SYNC: {sync_mark}  {r.sync_note}')
         print(f'MATCHED: {", ".join(r.matched_subconditions)}')
         print('-' * 50)
 
-        if ribbon:
-            print('SATY RIBBON (raw)')
-            print(f'  EMA Stack: {_ema_stack_str(ribbon)}')
-            print(f'  Close: {_fmt_float(ribbon.get("close"))}  |  '
-                  f'Low: {_fmt_float(ribbon.get("low"))}  |  '
-                  f'High: {_fmt_float(ribbon.get("high"))}')
-            lt21 = 'Y' if ribbon.get('low_touched_ema21') else 'N'
-            ca21 = 'Y' if ribbon.get('close_above_ema21') else 'N'
-            print(f'  Pullback: Low touched EMA21 {lt21}  |  Close above EMA21 {ca21}')
-            if ribbon.get('ema21_crossed_above_ema200_recently'):
-                print('  200 EMA: Golden Cross (recent)')
-            elif ribbon.get('ema21_crossed_below_ema200_recently'):
-                print('  200 EMA: Death Cross (recent)')
-            else:
-                print('  200 EMA: Inactive')
-
-        if squeeze:
-            dot   = squeeze.get('dot_color', '?')
-            cbars = squeeze.get('compression_bars', 0)
-            mom   = squeeze.get('momentum_value', 0)
-            mcol  = squeeze.get('momentum_color', '?')
-            above = '+' if squeeze.get('momentum_above_zero') else '-'
-            rising = 'rising' if squeeze.get('momentum_rising') else 'falling'
-            atr_d = squeeze.get('atr_distance', 0)
-
-            compression_label = {
-                'Orange': 'High Compression',
-                'Red':    'Mid Compression',
-                'Black':  'Low Compression',
-                'Green':  'No Squeeze',
-            }.get(dot, '?')
-
-            print('TTM SQUEEZE (raw)')
-            print(f'  Dot: {dot} ({cbars} bars) -> {compression_label}')
-            print(f'  Momentum: {_fmt_float(mom)} {above} ({mcol}) | above zero: {squeeze.get("momentum_above_zero")}, {rising}')
-            if squeeze.get('first_green_dot'):
-                print(f'  ATR Dist: {_fmt_float(atr_d)}')
+        for ind_name, raw in r.raw_outputs.items():
+            if not raw:
+                continue
+            print(f'{ind_name.upper().replace("_", " ")}')
+            for field, value in raw.items():
+                if isinstance(value, bool):
+                    print(f'  {field}: {"Y" if value else "N"}')
+                elif isinstance(value, float):
+                    print(f'  {field}: {_fmt_float(value)}')
+                elif value is not None:
+                    print(f'  {field}: {value}')
 
     print(f'\n{"=" * 60}\n')
 
 
-def save_xlsx(results: list[ScreenerResult], path: str, scan: str = '') -> None:
+def save_xlsx(results: list[ScreenerResult], path: str, scan: str,
+              indicators: dict, columns: list, aliases: dict) -> None:
     try:
         import openpyxl
     except ImportError:
@@ -94,48 +92,35 @@ def save_xlsx(results: list[ScreenerResult], path: str, scan: str = '') -> None:
         return
 
     import pandas as pd
-    rows = []
     date_run = datetime.date.today().isoformat()
 
+    # Build ordered working column map (alias -> source) from user-specified COLUMNS
+    col_map: dict[str, str] = {}
+    for alias in columns:
+        if alias in aliases:
+            col_map[alias] = aliases[alias]
+
+    covered_sources: set[str] = set(col_map.values())
+
+    # Enforce: any field that drove a matched subcondition must appear in output
+    auto_added: list[str] = []
     for r in results:
-        ribbon  = r.raw_outputs.get('saty_ribbon', {})
-        squeeze = r.raw_outputs.get('ttm_squeeze', {})
+        for source, auto_alias in _required_filter_fields(r, indicators).items():
+            if source not in covered_sources:
+                # use a pretty alias from aliases if one maps to this source, else raw key
+                pretty = next((a for a, s in aliases.items() if s == source), auto_alias)
+                col_map[pretty] = source
+                covered_sources.add(source)
+                auto_added.append(pretty)
 
-        ema_stack = (
-            f"8({_fmt_float(ribbon.get('ema8'))}) "
-            f"13({_fmt_float(ribbon.get('ema13'))}) "
-            f"21({_fmt_float(ribbon.get('ema21'))}) "
-            f"48({_fmt_float(ribbon.get('ema48'))}) "
-            f"200({_fmt_float(ribbon.get('ema200'))})"
-        )
+    if auto_added:
+        print(f'  Note: auto-added filter fields to output: {", ".join(sorted(set(auto_added)))}')
 
-        rows.append({
-            'ticker':     r.ticker,
-            'scan':       scan,
-            'in_sync':    r.in_sync,
-            'sync_note':  r.sync_note,
-            'ribbon_ema_stack':   ema_stack,
-            'ribbon_close':       ribbon.get('close'),
-            'ribbon_low':         ribbon.get('low'),
-            'ribbon_high':        ribbon.get('high'),
-            'ribbon_ema8':        ribbon.get('ema8'),
-            'ribbon_ema13':       ribbon.get('ema13'),
-            'ribbon_ema21':       ribbon.get('ema21'),
-            'ribbon_ema48':       ribbon.get('ema48'),
-            'ribbon_ema200':      ribbon.get('ema200'),
-            'ribbon_matched':     ', '.join(
-                s for s in r.matched_subconditions if s.startswith('saty_ribbon.')
-            ),
-            'squeeze_dot_color':        squeeze.get('dot_color'),
-            'squeeze_compression_bars': squeeze.get('compression_bars'),
-            'squeeze_momentum_value':   squeeze.get('momentum_value'),
-            'squeeze_momentum_color':   squeeze.get('momentum_color'),
-            'squeeze_atr_distance':     squeeze.get('atr_distance'),
-            'squeeze_matched':    ', '.join(
-                s for s in r.matched_subconditions if s.startswith('ttm_squeeze.')
-            ),
-            'date_run': date_run,
-        })
+    rows = []
+    for r in results:
+        row = {alias: _resolve_value(source, r, scan, date_run)
+               for alias, source in col_map.items()}
+        rows.append(row)
 
     df = pd.DataFrame(rows)
     df.to_excel(path, index=False)

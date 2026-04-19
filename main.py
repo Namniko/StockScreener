@@ -20,7 +20,7 @@ def parse_args():
     p.add_argument('--tree',       action='store_true',
                    help='Print full subcondition tag tree')
     p.add_argument('--limit',      type=int,   default=None, help='Max results to display')
-    p.add_argument('--output',     default=None, help='Save results to this .xlsx path')
+    p.add_argument('--output',     default=None, help='Override output .xlsx path (default: output/stockscreener_result_YYYYMMDD_HHMM.xlsx)')
     p.add_argument('--min-cap',    type=float, default=None, dest='min_cap',
                    help='Override min market cap (Stage 1)')
     p.add_argument('--sectors',    nargs='+',  default=None, help='Filter by sector(s)')
@@ -47,6 +47,14 @@ def main():
     STAGE1     = cfg_module.STAGE1
     INDICATORS = cfg_module.INDICATORS
 
+    try:
+        import output_config as out_module
+        OUT_COLUMNS = out_module.COLUMNS
+        OUT_ALIASES = out_module.ALIASES
+    except ImportError:
+        print('Error: output_config.py not found. Copy output_config.example.py -> output_config.py and edit it.')
+        sys.exit(1)
+
     # ── Tag listing (no scan needed) ─────────────────────────────────────
     if args.tree:
         from scanner.tag_query import print_tag_tree
@@ -70,7 +78,8 @@ def main():
 
     # ── Validate expression ──────────────────────────────────────────────
     from scanner.expression_parser import (
-        parse_expression, evaluate_expression, get_required_indicators
+        parse_expression, evaluate_expression, get_required_indicators,
+        get_required_tv_prefilters,
     )
     try:
         parse_expression(args.scan, PRESETS, INDICATORS)
@@ -79,8 +88,11 @@ def main():
         sys.exit(1)
 
     required_indicators = get_required_indicators(args.scan, PRESETS, INDICATORS)
+    tv_prefilter        = get_required_tv_prefilters(args.scan, PRESETS, INDICATORS)
     print(f'Scan: {args.scan}')
     print(f'Indicators needed: {", ".join(sorted(required_indicators))}')
+    if tv_prefilter:
+        print(f'TV prefilter: {", ".join(tv_prefilter)}')
 
     # ── Stage 1 ──────────────────────────────────────────────────────────
     from stage1.tv_screener import run_tv_screener
@@ -91,10 +103,16 @@ def main():
 
     print('\nRunning Stage 1 (TradingView screener)...')
     try:
-        tickers, tv_data = run_tv_screener(STAGE1, cookies=cookies)
+        tickers, tv_df = run_tv_screener(STAGE1, prefilter=tv_prefilter, cookies=cookies)
     except Exception as e:
         print(f'Stage 1 failed: {e}')
         sys.exit(1)
+
+    # Build symbol → Stage 1 row dict for output enrichment
+    tv_by_symbol = {
+        row['ticker'].split(':')[-1]: {k: v for k, v in row.items() if k != 'ticker'}
+        for _, row in tv_df.iterrows()
+    }
 
     if not tickers:
         print('Stage 1 returned no candidates. Exiting.')
@@ -109,6 +127,7 @@ def main():
                           if INDICATORS[n].get('interval') == '1wk']
 
     print(f'\nFetching daily history for {len(tickers)} tickers...')
+
     history = fetch_history(tickers, days=STAGE1['history_days'])
     print(f'Daily history available for {len(history)} tickers.')
 
@@ -159,7 +178,8 @@ def main():
             print(f'  Warning: evaluation failed for {ticker}: {e}')
             continue
         if matched:
-            result = build_result(ticker, outputs, args.scan, matched, INDICATORS, PRESETS)
+            result = build_result(ticker, outputs, args.scan, matched, INDICATORS, PRESETS,
+                                  tv_data=tv_by_symbol.get(ticker, {}))
             matched_results.append(result)
 
     ranked = rank_results(matched_results)
@@ -170,8 +190,11 @@ def main():
     from output.formatter import print_results, save_xlsx
     print_results(ranked, scan=args.scan)
 
-    if args.output:
-        save_xlsx(ranked, args.output, scan=args.scan)
+    from datetime import datetime
+    ts = datetime.now().strftime('%Y%m%d_%H%M')
+    out_path = args.output or os.path.join('output', f'stockscreener_result_{ts}.xlsx')
+    save_xlsx(ranked, out_path, scan=args.scan,
+              indicators=INDICATORS, columns=OUT_COLUMNS, aliases=OUT_ALIASES)
 
 
 if __name__ == '__main__':
