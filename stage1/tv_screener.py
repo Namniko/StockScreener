@@ -20,6 +20,10 @@ def _apply_prefilter(expressions: list, pf: dict) -> None:
         expressions.append(col('EMA50') >= col('EMA200'))
     if pf.get('ema8_above_ema21'):
         expressions.append(col('EMA8') >= col('EMA21'))
+    if pf.get('close_above_ema8'):
+        expressions.append(col('close') >= col('EMA8'))
+    if pf.get('close_below_ema8'):
+        expressions.append(col('close') < col('EMA8'))
     if pf.get('close_above_ema21'):
         expressions.append(col('close') >= col('EMA21'))
     if pf.get('close_below_ema21'):
