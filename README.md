@@ -220,6 +220,8 @@ Each subcondition is a dict of `field: threshold` pairs evaluated against Stage 
 
 For OR expressions, a `tv_prefilter` key is only applied if all branches of the OR agree on its value — so it never over-filters. For the full list of supported `tv_prefilter` keys, see `config.example.py`.
 
+> **Note:** `tv_prefilter` is metadata consumed by pass 2 only — it is never evaluated as a threshold in Stage 2. The evaluator explicitly skips both `tags` and `tv_prefilter` when checking subcondition fields against raw indicator output.
+
 Threshold suffixes control the comparison operator:
 
 | Suffix | Operator | Example |

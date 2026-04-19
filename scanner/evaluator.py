@@ -3,7 +3,7 @@ SUFFIX_OPS = ('__gte', '__lte', '__gt', '__lt', '__in')
 
 def evaluate_subcondition(raw: dict, subcondition: dict) -> bool:
     for key, threshold in subcondition.items():
-        if key == 'tags':
+        if key in ('tags', 'tv_prefilter'):
             continue
         op = None
         field = key
